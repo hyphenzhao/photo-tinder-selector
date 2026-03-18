@@ -9,7 +9,15 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .forms import AppConfigForm
 from .models import PhotoItem
-from .services import build_stack_queryset, export_favorites, get_config, scan_source_folder, stats
+from .services import (
+    build_stack_queryset,
+    export_favorites,
+    get_config,
+    get_scan_state,
+    scan_source_folder,
+    start_scan_task,
+    stats,
+)
 
 
 def _stack_context(request, view_name: str):
@@ -43,36 +51,23 @@ def disliked(request):
 
 
 def export_page(request):
-    scan_result = scan_source_folder()
     config = get_config()
-    if request.method == "POST":
-        if "save_config" in request.POST:
-            form = AppConfigForm(request.POST, instance=config)
-            if form.is_valid():
-                form.save()
-                scan_result = scan_source_folder()
-                messages.success(request, "Folders saved and source folder rescanned.")
-                return redirect("selector:export")
-        elif "rescan" in request.POST:
-            scan_result = scan_source_folder()
-            messages.success(request, f"Scan complete. Found {scan_result['found']} images.")
-            return redirect("selector:export")
-        elif "export" in request.POST:
-            result = export_favorites()
-            if result["error"]:
-                messages.error(request, result["error"])
-            else:
-                messages.success(request, f"Exported {result['copied']} favorite images.")
-            return redirect("selector:export")
-    else:
-        form = AppConfigForm(instance=config)
+    if request.method == "POST" and "export" in request.POST:
+        result = export_favorites()
+        if result["error"]:
+            messages.error(request, result["error"])
+        else:
+            messages.success(request, f"Exported {result['copied']} favorite images.")
+        return redirect("selector:export")
 
+    form = AppConfigForm(instance=config)
     return render(
         request,
         "selector/export_page.html",
         {
             "form": form,
-            "scan_result": scan_result,
+            "scan_result": get_scan_state().get("result") or {"found": 0, "added": 0, "missing": 0},
+            "scan_state": get_scan_state(),
             "stats": stats(),
             "config": config,
             "view_name": "export",
@@ -104,6 +99,27 @@ def photo_api(request, photo_id: int):
 def stats_api(request):
     s = stats()
     return JsonResponse(s)
+
+
+@require_POST
+def save_config_api(request):
+    config = get_config()
+    form = AppConfigForm(request.POST, instance=config)
+    if not form.is_valid():
+        return JsonResponse({"ok": False, "errors": form.errors}, status=400)
+    form.save()
+    return JsonResponse({"ok": True, "message": "Folders saved."})
+
+
+@require_POST
+def start_scan_api(request):
+    started = start_scan_task()
+    return JsonResponse({"ok": True, "started": started, "state": get_scan_state()})
+
+
+@require_GET
+def scan_status_api(request):
+    return JsonResponse(get_scan_state())
 
 
 @require_POST

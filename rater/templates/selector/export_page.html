@@ -4,7 +4,7 @@
 <section class="settings-grid">
   <div class="panel">
     <h2>Folders</h2>
-    <form method="post" class="form-grid">
+    <form class="form-grid" id="config-form">
       {% csrf_token %}
       <label>
         <span>Source folder</span>
@@ -15,18 +15,29 @@
         {{ form.output_folder }}
       </label>
       <div class="button-row">
-        <button class="primary-btn" type="submit" name="save_config">Save folders</button>
-        <button class="ghost-btn" type="submit" name="rescan">Rescan source</button>
+        <button class="primary-btn" type="button" id="save-config-btn">Save folders</button>
+        <button class="ghost-btn" type="button" id="rescan-btn">Rescan source</button>
       </div>
     </form>
+
+    <div class="scan-panel">
+      <div class="scan-row">
+        <span id="scan-message">{{ scan_state.message|default:'Idle' }}</span>
+        <strong id="scan-percent">{{ scan_state.percent|default:0 }}%</strong>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" id="scan-progress-bar" style="width: {{ scan_state.percent|default:0 }}%;"></div>
+      </div>
+      <div class="scan-meta" id="scan-meta">{{ scan_state.current|default:0 }} / {{ scan_state.total|default:0 }}</div>
+    </div>
   </div>
 
   <div class="panel">
     <h2>Export favorites</h2>
     <div class="summary-list">
-      <div><span>Found in source</span><strong>{{ scan_result.found }}</strong></div>
-      <div><span>Newly added</span><strong>{{ scan_result.added }}</strong></div>
-      <div><span>Missing on disk</span><strong>{{ scan_result.missing }}</strong></div>
+      <div><span>Found in source</span><strong id="summary-found">{{ scan_result.found }}</strong></div>
+      <div><span>Newly added</span><strong id="summary-added">{{ scan_result.added }}</strong></div>
+      <div><span>Missing on disk</span><strong id="summary-missing">{{ scan_result.missing }}</strong></div>
       <div><span>Total favorites</span><strong>{{ stats.favorite }}</strong></div>
     </div>
     <form method="post">
@@ -36,4 +47,76 @@
     <p class="subtle">Export copies files. It does not move or delete originals.</p>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(() => {
+  const csrf = document.querySelector('#config-form [name=csrfmiddlewaretoken]')?.value;
+  const saveBtn = document.getElementById('save-config-btn');
+  const rescanBtn = document.getElementById('rescan-btn');
+  const sourceInput = document.getElementById('id_source_folder');
+  const outputInput = document.getElementById('id_output_folder');
+  const msg = document.getElementById('scan-message');
+  const pct = document.getElementById('scan-percent');
+  const meta = document.getElementById('scan-meta');
+  const bar = document.getElementById('scan-progress-bar');
+  let poller = null;
+
+  function setStatus(state) {
+    msg.textContent = state.message || 'Idle';
+    pct.textContent = `${state.percent || 0}%`;
+    meta.textContent = `${state.current || 0} / ${state.total || 0}`;
+    bar.style.width = `${state.percent || 0}%`;
+    if (state.result) {
+      if (state.result.found !== undefined) document.getElementById('summary-found').textContent = state.result.found;
+      if (state.result.added !== undefined) document.getElementById('summary-added').textContent = state.result.added;
+      if (state.result.missing !== undefined) document.getElementById('summary-missing').textContent = state.result.missing;
+    }
+  }
+
+  async function pollStatus() {
+    const res = await fetch('/api/scan/status/');
+    if (!res.ok) return;
+    const state = await res.json();
+    setStatus(state);
+    if (!state.running && poller) {
+      clearInterval(poller);
+      poller = null;
+      saveBtn.disabled = false;
+      rescanBtn.disabled = false;
+    }
+  }
+
+  saveBtn?.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    const form = new FormData();
+    form.append('source_folder', sourceInput.value);
+    form.append('output_folder', outputInput.value);
+    const res = await fetch('/api/config/save/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf },
+      body: form,
+    });
+    const data = await res.json();
+    msg.textContent = data.ok ? data.message : 'Failed to save folders';
+    saveBtn.disabled = false;
+  });
+
+  rescanBtn?.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    rescanBtn.disabled = true;
+    msg.textContent = 'Starting scan...';
+    const res = await fetch('/api/scan/start/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf },
+    });
+    const data = await res.json();
+    setStatus(data.state || {});
+    if (!poller) {
+      poller = setInterval(pollStatus, 600);
+    }
+  });
+})();
+</script>
 {% endblock %}

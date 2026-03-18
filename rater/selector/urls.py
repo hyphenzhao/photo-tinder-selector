@@ -13,4 +13,7 @@ urlpatterns = [
     path("api/photos/<int:photo_id>/rate/", views.rate_photo, name="rate_photo"),
     path("api/photos/<int:photo_id>/file/", views.serve_photo_file, name="photo_file"),
     path("api/stats/", views.stats_api, name="stats_api"),
+    path("api/config/save/", views.save_config_api, name="save_config_api"),
+    path("api/scan/start/", views.start_scan_api, name="start_scan_api"),
+    path("api/scan/status/", views.scan_status_api, name="scan_status_api"),
 ]

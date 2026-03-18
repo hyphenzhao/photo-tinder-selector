@@ -141,6 +141,11 @@ body {
 .summary-list { display:grid; gap:10px; margin:16px 0; }
 .summary-list div { display:flex; justify-content:space-between; gap:12px; color:var(--muted); }
 .summary-list strong { color:white; }
+.scan-panel { margin-top: 18px; padding: 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+.scan-row { display:flex; justify-content:space-between; gap:12px; margin-bottom:10px; color:white; }
+.scan-meta { margin-top: 8px; color: var(--muted); font-size: 13px; }
+.progress-track { width:100%; height:12px; border-radius:999px; background: rgba(255,255,255,.08); overflow:hidden; }
+.progress-bar { height:100%; width:0; background: linear-gradient(90deg, #6a8dff, #ff4d8d); transition: width .25s ease; }
 @media (max-width: 860px) {
   .stats-row, .settings-grid { grid-template-columns: 1fr 1fr; }
 }
