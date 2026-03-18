@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ view_name|title }} · Photo Tinder Selector{% endblock %}
+{% block content %}
+<section class="tinder-shell" data-stack='{{ stack_ids_json|safe }}' data-view="{{ view_name }}">
+  <div class="deck-wrap">
+    <div class="empty-state hidden">
+      <div class="empty-icon">📷</div>
+      <h2>No photos here</h2>
+      <p>{% if view_name == 'home' %}Unread images will appear here after you set a source folder and rescan.{% elif view_name == 'favorites' %}Favorite images will appear here.{% else %}Disliked images will appear here.{% endif %}</p>
+    </div>
+    <div class="card-stack">
+      <div class="photo-card back hidden" id="card-back"></div>
+      <div class="photo-card front hidden" id="card-front"></div>
+      <div class="reaction reaction-like" id="reaction-like">♡</div>
+      <div class="reaction reaction-dislike" id="reaction-dislike">💔</div>
+      <div class="reaction reaction-skip" id="reaction-skip">↧</div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="round-btn dislike-btn" id="btn-dislike" aria-label="Dislike">💔</button>
+    <button class="round-btn skip-btn" id="btn-skip" aria-label="Skip">↧</button>
+    <button class="round-btn like-btn" id="btn-like" aria-label="Like">♡</button>
+  </div>
+  <p class="tip">Swipe left to dislike, right to favorite, down to keep unread.</p>
+
+  <section class="stats-row bottom-stats">
+    <div class="stat-card"><span>Total</span><strong id="stat-total">{{ stats.total }}</strong></div>
+    <div class="stat-card"><span>Unread</span><strong id="stat-unread">{{ stats.unread }}</strong></div>
+    <div class="stat-card"><span>Favorite</span><strong id="stat-favorite">{{ stats.favorite }}</strong></div>
+    <div class="stat-card"><span>Disliked</span><strong id="stat-dislike">{{ stats.dislike }}</strong></div>
+  </section>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  window.selectorConfig = {
+    stack: {{ stack_ids_json|safe }},
+    csrfToken: '{{ csrf_token }}'
+  };
+</script>
+<script src="{% static 'selector/app.js' %}"></script>
+{% endblock %}

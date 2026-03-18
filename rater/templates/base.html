@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Photo Tinder Selector{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'selector/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <nav class="nav-pillbar">
+      <a href="{% url 'selector:home' %}" class="nav-pill {% if view_name == 'home' %}active{% endif %}">Home</a>
+      <a href="{% url 'selector:favorites' %}" class="nav-pill {% if view_name == 'favorites' %}active{% endif %}">Favorite</a>
+      <a href="{% url 'selector:disliked' %}" class="nav-pill {% if view_name == 'disliked' %}active{% endif %}">Disliked</a>
+      <a href="{% url 'selector:export' %}" class="nav-pill {% if view_name == 'export' %}active{% endif %}">Export</a>
+    </nav>
+  </header>
+  <main class="page-shell">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

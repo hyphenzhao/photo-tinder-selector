@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Export · Photo Tinder Selector{% endblock %}
+{% block content %}
+<section class="settings-grid">
+  <div class="panel">
+    <h2>Folders</h2>
+    <form method="post" class="form-grid">
+      {% csrf_token %}
+      <label>
+        <span>Source folder</span>
+        {{ form.source_folder }}
+      </label>
+      <label>
+        <span>Output folder</span>
+        {{ form.output_folder }}
+      </label>
+      <div class="button-row">
+        <button class="primary-btn" type="submit" name="save_config">Save folders</button>
+        <button class="ghost-btn" type="submit" name="rescan">Rescan source</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Export favorites</h2>
+    <div class="summary-list">
+      <div><span>Found in source</span><strong>{{ scan_result.found }}</strong></div>
+      <div><span>Newly added</span><strong>{{ scan_result.added }}</strong></div>
+      <div><span>Missing on disk</span><strong>{{ scan_result.missing }}</strong></div>
+      <div><span>Total favorites</span><strong>{{ stats.favorite }}</strong></div>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <button class="primary-btn full-width" type="submit" name="export">Copy favorite photos to output folder</button>
+    </form>
+    <p class="subtle">Export copies files. It does not move or delete originals.</p>
+  </div>
+</section>
+{% endblock %}
