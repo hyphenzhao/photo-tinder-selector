@@ -44,7 +44,7 @@ def scan_source_folder():
     }
 
 
-def build_stack_queryset(view_name: str):
+def build_stack_queryset(view_name: str, order_mode: str = "random"):
     qs = PhotoItem.objects.filter(exists_on_disk=True)
     if view_name == "favorites":
         qs = qs.filter(state=PhotoItem.STATE_FAVORITE)
@@ -52,6 +52,10 @@ def build_stack_queryset(view_name: str):
         qs = qs.filter(state=PhotoItem.STATE_DISLIKE)
     else:
         qs = qs.filter(state=PhotoItem.STATE_UNREAD)
+
+    if order_mode == "recent":
+        return list(qs.order_by("-state_changed_at", "-id").values_list("id", flat=True))
+
     ids = list(qs.values_list("id", flat=True))
     random.shuffle(ids)
     return ids

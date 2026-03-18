@@ -4,6 +4,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .forms import AppConfigForm
@@ -11,29 +12,33 @@ from .models import PhotoItem
 from .services import build_stack_queryset, export_favorites, get_config, scan_source_folder, stats
 
 
-def _stack_context(view_name: str):
+def _stack_context(request, view_name: str):
     scan_source_folder()
-    ids = build_stack_queryset(view_name)
+    order_mode = request.GET.get("order", "random")
+    if order_mode not in {"random", "recent"}:
+        order_mode = "random"
+    ids = build_stack_queryset(view_name, order_mode=order_mode)
     return {
         "view_name": view_name,
         "stack_ids": ids,
         "stack_ids_json": json.dumps(ids),
         "stats": stats(),
+        "order_mode": order_mode,
     }
 
 
 def home(request):
-    context = _stack_context("home")
+    context = _stack_context(request, "home")
     return render(request, "selector/stack_page.html", context)
 
 
 def favorites(request):
-    context = _stack_context("favorites")
+    context = _stack_context(request, "favorites")
     return render(request, "selector/stack_page.html", context)
 
 
 def disliked(request):
-    context = _stack_context("disliked")
+    context = _stack_context(request, "disliked")
     return render(request, "selector/stack_page.html", context)
 
 
@@ -71,6 +76,7 @@ def export_page(request):
             "stats": stats(),
             "config": config,
             "view_name": "export",
+            "order_mode": request.GET.get("order", "random"),
         },
     )
 
@@ -90,6 +96,7 @@ def photo_api(request, photo_id: int):
             "state": photo.state,
             "image_url": f"/api/photos/{photo.id}/file/",
             "badge": badge,
+            "timestamp": photo.state_changed_at.strftime("%Y-%m-%d %H:%M"),
         }
     )
 
@@ -105,14 +112,18 @@ def rate_photo(request, photo_id: int):
     action = request.POST.get("action")
     if action == "favorite":
         photo.state = PhotoItem.STATE_FAVORITE
+        photo.state_changed_at = timezone.now()
     elif action == "dislike":
         photo.state = PhotoItem.STATE_DISLIKE
+        photo.state_changed_at = timezone.now()
     elif action == "skip":
-        pass
+        if photo.state == PhotoItem.STATE_UNREAD:
+            photo.state_changed_at = timezone.now()
+            photo.save(update_fields=["state_changed_at", "updated_at"])
+        return JsonResponse({"ok": True, "state": photo.state})
     else:
         return JsonResponse({"ok": False, "error": "Unknown action"}, status=400)
-    if action != "skip":
-        photo.save(update_fields=["state", "updated_at"])
+    photo.save(update_fields=["state", "state_changed_at", "updated_at"])
     return JsonResponse({"ok": True, "state": photo.state})
 
 

@@ -48,7 +48,7 @@
       ${badgeMarkup(photo.badge)}
       <div class="photo-overlay">
         <div class="photo-name">${photo.filename}</div>
-        <div class="photo-meta">#${photo.id}</div>
+        <div class="photo-meta">#${photo.id} · ${photo.timestamp}</div>
       </div>
     `;
     if (isFront) {
@@ -113,7 +113,7 @@
     if (!current) return;
     const activeId = current.id;
     popReaction(action);
-    if (action !== 'skip') await sendAction(activeId, action);
+    await sendAction(activeId, action);
 
     front.style.transition = 'transform .28s ease, opacity .28s ease';
     if (action === 'favorite') front.style.transform = `translate(${Math.max(dirX, 420)}px, ${dirY}px) rotate(18deg)`;

@@ -14,11 +14,22 @@
 <body>
   <header class="topbar">
     <nav class="nav-pillbar">
-      <a href="{% url 'selector:home' %}" class="nav-pill {% if view_name == 'home' %}active{% endif %}">Home</a>
-      <a href="{% url 'selector:favorites' %}" class="nav-pill {% if view_name == 'favorites' %}active{% endif %}">Favorite</a>
-      <a href="{% url 'selector:disliked' %}" class="nav-pill {% if view_name == 'disliked' %}active{% endif %}">Disliked</a>
-      <a href="{% url 'selector:export' %}" class="nav-pill {% if view_name == 'export' %}active{% endif %}">Export</a>
+      <a href="{% url 'selector:home' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'home' %}active{% endif %}">Home</a>
+      <a href="{% url 'selector:favorites' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'favorites' %}active{% endif %}">Favorite</a>
+      <a href="{% url 'selector:disliked' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'disliked' %}active{% endif %}">Disliked</a>
+      <a href="{% url 'selector:export' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'export' %}active{% endif %}">Export</a>
     </nav>
+    {% if view_name != 'export' %}
+    <div class="sub-toolbar">
+      <form method="get" class="order-form">
+        <label for="order-select">Order</label>
+        <select id="order-select" name="order" onchange="this.form.submit()">
+          <option value="random" {% if order_mode == 'random' %}selected{% endif %}>Random order</option>
+          <option value="recent" {% if order_mode == 'recent' %}selected{% endif %}>Most recent</option>
+        </select>
+      </form>
+    </div>
+    {% endif %}
   </header>
   <main class="page-shell">
     {% if messages %}

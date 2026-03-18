@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class AppConfig(models.Model):
@@ -28,6 +29,7 @@ class PhotoItem(models.Model):
     filepath = models.CharField(max_length=1200, unique=True)
     filename = models.CharField(max_length=255)
     state = models.PositiveSmallIntegerField(choices=STATE_CHOICES, default=STATE_UNREAD)
+    state_changed_at = models.DateTimeField(default=timezone.now)
     exists_on_disk = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
