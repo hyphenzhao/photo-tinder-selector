@@ -1,3 +1,4 @@
+import hashlib
 import random
 import shutil
 from pathlib import Path
@@ -13,6 +14,14 @@ def get_config():
     return AppConfig.get_solo()
 
 
+def calculate_file_hash(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
 def scan_source_folder():
     config = get_config()
     source = Path(config.source_folder).expanduser() if config.source_folder else None
@@ -21,22 +30,51 @@ def scan_source_folder():
         return {"found": 0, "added": 0, "missing": PhotoItem.objects.count()}
 
     found_paths = set()
+    seen_hashes = set()
     added = 0
+
     for path in source.rglob("*"):
         if not path.is_file() or path.suffix.lower() not in IMAGE_EXTENSIONS:
             continue
+
         resolved = str(path.resolve())
         found_paths.add(resolved)
-        _, created = PhotoItem.objects.get_or_create(
-            filepath=resolved,
-            defaults={"filename": path.name, "exists_on_disk": True},
-        )
-        if not created:
-            PhotoItem.objects.filter(filepath=resolved).update(filename=path.name, exists_on_disk=True)
-        else:
-            added += 1
+        file_hash = calculate_file_hash(path)
+        seen_hashes.add(file_hash)
 
-    PhotoItem.objects.exclude(filepath__in=found_paths).update(exists_on_disk=False)
+        item = PhotoItem.objects.filter(file_hash=file_hash).first()
+        if item:
+            changed = []
+            if item.filepath != resolved:
+                item.filepath = resolved
+                changed.append("filepath")
+            if item.filename != path.name:
+                item.filename = path.name
+                changed.append("filename")
+            if not item.exists_on_disk:
+                item.exists_on_disk = True
+                changed.append("exists_on_disk")
+            if changed:
+                item.save(update_fields=changed + ["updated_at"])
+            continue
+
+        item = PhotoItem.objects.filter(filepath=resolved).first()
+        if item:
+            item.filename = path.name
+            item.file_hash = file_hash
+            item.exists_on_disk = True
+            item.save(update_fields=["filename", "file_hash", "exists_on_disk", "updated_at"])
+            continue
+
+        PhotoItem.objects.create(
+            filepath=resolved,
+            file_hash=file_hash,
+            filename=path.name,
+            exists_on_disk=True,
+        )
+        added += 1
+
+    PhotoItem.objects.exclude(file_hash__in=seen_hashes).update(exists_on_disk=False)
     return {
         "found": len(found_paths),
         "added": added,

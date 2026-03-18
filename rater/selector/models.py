@@ -27,6 +27,7 @@ class PhotoItem(models.Model):
     )
 
     filepath = models.CharField(max_length=1200, unique=True)
+    file_hash = models.CharField(max_length=64, null=True, blank=True, unique=True)
     filename = models.CharField(max_length=255)
     state = models.PositiveSmallIntegerField(choices=STATE_CHOICES, default=STATE_UNREAD)
     state_changed_at = models.DateTimeField(default=timezone.now)
