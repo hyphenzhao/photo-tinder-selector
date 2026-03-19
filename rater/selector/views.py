@@ -14,14 +14,12 @@ from .services import (
     export_favorites,
     get_config,
     get_scan_state,
-    scan_source_folder,
     start_scan_task,
     stats,
 )
 
 
 def _stack_context(request, view_name: str):
-    scan_source_folder()
     order_mode = request.GET.get("order", "random")
     if order_mode not in {"random", "recent"}:
         order_mode = "random"

@@ -75,8 +75,12 @@
       return;
     }
     queue = ids.slice(2);
-    current = await fetchPhoto(ids[0]);
-    next = ids[1] ? await fetchPhoto(ids[1]) : null;
+    const [firstPhoto, secondPhoto] = await Promise.all([
+      fetchPhoto(ids[0]),
+      ids[1] ? fetchPhoto(ids[1]) : Promise.resolve(null),
+    ]);
+    current = firstPhoto;
+    next = secondPhoto;
     renderCard(front, current, true);
     renderCard(back, next, false);
     showEmpty(!current);
