@@ -40,6 +40,9 @@ def home(request):
 
 def favorites(request):
     context = _stack_context(request, "favorites")
+    context["layout_mode"] = "wall" if request.GET.get("layout") == "wall" else "stack"
+    if request.headers.get("HX-Request") == "true":
+        return render(request, "selector/_favorite_panel.html", context)
     return render(request, "selector/stack_page.html", context)
 
 

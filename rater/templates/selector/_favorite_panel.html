@@ -1,0 +1,41 @@
+{% if layout_mode == 'wall' %}
+<div class="favorites-panel favorites-panel-wall" id="favorite-panel-body" data-layout="wall" data-stack='{{ stack_ids_json|safe }}' data-view="favorites">
+  {% if stack_ids %}
+  <div class="favorites-wall-grid">
+    {% for photo_id in stack_ids %}
+    <button class="favorite-wall-tile" type="button" data-photo-id="{{ photo_id }}"></button>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📷</div>
+    <h2>No favorite photos yet</h2>
+    <p>Favorite images will appear here.</p>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="favorites-panel favorites-panel-stack" id="favorite-panel-body" data-layout="stack" data-stack='{{ stack_ids_json|safe }}' data-view="favorites">
+  <div class="deck-wrap">
+    <div class="empty-state hidden">
+      <div class="empty-icon">📷</div>
+      <h2>No photos here</h2>
+      <p>Favorite images will appear here.</p>
+    </div>
+    <div class="card-stack">
+      <div class="photo-card back hidden" id="card-back"></div>
+      <div class="photo-card front hidden" id="card-front"></div>
+      <div class="reaction reaction-like" id="reaction-like">♡</div>
+      <div class="reaction reaction-dislike" id="reaction-dislike">💔</div>
+      <div class="reaction reaction-skip" id="reaction-skip">↧</div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="round-btn dislike-btn" id="btn-dislike" aria-label="Dislike">💔</button>
+    <button class="round-btn skip-btn" id="btn-skip" aria-label="Skip">↧</button>
+    <button class="round-btn like-btn" id="btn-like" aria-label="Like">♡</button>
+  </div>
+  <p class="tip">Swipe left to dislike, right to favorite, down to keep unread.</p>
+</div>
+{% endif %}

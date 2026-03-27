@@ -2,12 +2,15 @@
 {% load static %}
 {% block title %}{{ view_name|title }} · Photo Tinder Selector{% endblock %}
 {% block content %}
-<section class="tinder-shell" data-stack='{{ stack_ids_json|safe }}' data-view="{{ view_name }}">
+<section class="tinder-shell" data-view="{{ view_name }}">
+  {% if view_name == 'favorites' %}
+    {% include 'selector/_favorite_panel.html' %}
+  {% else %}
   <div class="deck-wrap">
     <div class="empty-state hidden">
       <div class="empty-icon">📷</div>
       <h2>No photos here</h2>
-      <p>{% if view_name == 'home' %}Unread images will appear here after you set a source folder and rescan.{% elif view_name == 'favorites' %}Favorite images will appear here.{% else %}Disliked images will appear here.{% endif %}</p>
+      <p>{% if view_name == 'home' %}Unread images will appear here after you set a source folder and rescan.{% else %}Disliked images will appear here.{% endif %}</p>
     </div>
     <div class="card-stack">
       <div class="photo-card back hidden" id="card-back"></div>
@@ -24,6 +27,7 @@
     <button class="round-btn like-btn" id="btn-like" aria-label="Like">♡</button>
   </div>
   <p class="tip">Swipe left to dislike, right to favorite, down to keep unread.</p>
+  {% endif %}
 
   <section class="stats-row bottom-stats">
     <div class="stat-card"><span>Total</span><strong id="stat-total">{{ stats.total }}</strong></div>
@@ -38,6 +42,8 @@
 <script>
   window.selectorConfig = {
     stack: {{ stack_ids_json|safe }},
+    viewName: '{{ view_name }}',
+    layoutMode: '{{ layout_mode|default:"stack" }}',
     csrfToken: '{{ csrf_token }}'
   };
 </script>
