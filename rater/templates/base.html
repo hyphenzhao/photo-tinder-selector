@@ -31,10 +31,12 @@
         {% if view_name == 'favorites' %}
         <label class="layout-switch" for="layout-toggle">
           <input type="checkbox" id="layout-toggle" name="layout" value="wall" {% if layout_mode == 'wall' %}checked{% endif %} hx-get="{% url 'selector:favorites' %}" hx-target="#favorite-panel-body" hx-swap="outerHTML" hx-include="#order-select" hx-trigger="change">
-          <span class="layout-switch-track">
-            <span class="layout-switch-knob"></span>
+          <span class="layout-switch-button">
+            <span class="layout-switch-track">
+              <span class="layout-switch-knob"></span>
+            </span>
+            <span class="layout-switch-label">Wall</span>
           </span>
-          <span class="layout-switch-label">Wall</span>
         </label>
         {% endif %}
       </form>

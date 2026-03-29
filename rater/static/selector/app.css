@@ -30,8 +30,6 @@ body {
 .layout-switch {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: white;
   cursor: pointer;
 }
 .layout-switch input {
@@ -39,12 +37,23 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+.layout-switch-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  color: white;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
 .layout-switch-track {
   width: 54px;
   height: 30px;
   border-radius: 999px;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.12);
   position: relative;
   transition: background .2s ease, border-color .2s ease;
 }
@@ -58,16 +67,22 @@ body {
   background: white;
   transition: transform .2s ease;
 }
-.layout-switch input:checked + .layout-switch-track {
+.layout-switch input:checked + .layout-switch-button {
+  background: rgba(95,224,170,.14);
+  border-color: rgba(95,224,170,.4);
+  box-shadow: 0 10px 24px rgba(95,224,170,.16);
+}
+.layout-switch input:checked + .layout-switch-button .layout-switch-track {
   background: rgba(95,224,170,.35);
   border-color: rgba(95,224,170,.65);
 }
-.layout-switch input:checked + .layout-switch-track .layout-switch-knob {
+.layout-switch input:checked + .layout-switch-button .layout-switch-knob {
   transform: translateX(24px);
 }
 .layout-switch-label {
-  color: var(--muted);
+  color: white;
   font-size: 14px;
+  font-weight: 600;
 }
 .page-shell { max-width: 1100px; margin: 0 auto; padding: 24px 20px 44px; }
 .messages { display: grid; gap: 10px; margin-bottom: 18px; }
