@@ -221,6 +221,20 @@ body {
 .favorite-lightbox-stage-game.is-scrubbing {
   cursor: ew-resize;
 }
+.favorite-lightbox-stage-game.is-mousou {
+  cursor: none;
+}
+.game-mode-switch {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  z-index: 2;
+  box-shadow: var(--shadow);
+}
+.game-mode-switch .layout-switch-button {
+  background: rgba(0,0,0,.62);
+  border-color: rgba(255,255,255,.2);
+}
 .game-layer-bar {
   position: absolute;
   bottom: 24px;
@@ -301,6 +315,12 @@ body {
   }
   .favorite-lightbox-next {
     right: 8px;
+  }
+  .game-mode-switch {
+    top: 8px;
+    left: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
   }
   .game-layer-bar {
     bottom: 12px;

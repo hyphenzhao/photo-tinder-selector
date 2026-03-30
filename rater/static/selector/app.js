@@ -132,9 +132,11 @@
     const stage = document.getElementById('favorite-lightbox-stage');
     const lightboxImage = document.getElementById('favorite-lightbox-image');
     const overlayImage = document.getElementById('game-lightbox-overlay');
+    const modeToggle = document.querySelector('[data-game-mode-toggle]');
     const pairButtons = Array.from(document.querySelectorAll('[data-game-pair]'));
     let currentLayers = null;
     let activePair = ['1', '2'];
+    let mousouMode = Boolean(modeToggle?.checked);
 
     const setActivePair = pair => {
       activePair = pair;
@@ -143,18 +145,77 @@
       });
     };
 
+    const resetOverlay = () => {
+      if (!overlayImage) return;
+      overlayImage.removeAttribute('src');
+      overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+      overlayImage.style.webkitMaskImage = '';
+      overlayImage.style.maskImage = '';
+      overlayImage.style.webkitMaskRepeat = '';
+      overlayImage.style.maskRepeat = '';
+    };
+
+    const applyModeClass = () => {
+      if (!stage) return;
+      stage.classList.toggle('is-mousou', mousouMode && lightbox?.classList.contains('is-open'));
+      stage.classList.toggle('is-scrubbing', !mousouMode && lightbox?.classList.contains('is-open'));
+    };
+
     const renderPairPosition = ratio => {
       if (!currentLayers || !lightboxImage || !overlayImage) return;
-      const [leftLayer, rightLayer] = activePair;
-      const leftSrc = currentLayers[leftLayer];
-      const rightSrc = currentLayers[rightLayer];
-      if (!leftSrc || !rightSrc) return;
+      const [topLayer, bottomLayer] = activePair;
+      const topSrc = currentLayers[topLayer];
+      const bottomSrc = currentLayers[bottomLayer];
+      if (!topSrc || !bottomSrc) return;
 
-      lightboxImage.src = leftSrc;
-      overlayImage.src = rightSrc;
+      lightboxImage.src = bottomSrc;
+      overlayImage.src = topSrc;
       overlayImage.alt = lightboxImage.alt;
+      overlayImage.style.webkitMaskImage = '';
+      overlayImage.style.maskImage = '';
       const percent = Math.max(0, Math.min(1, ratio)) * 100;
       overlayImage.style.clipPath = `inset(0 0 0 ${percent}%)`;
+    };
+
+    const renderMousouPosition = event => {
+      if (!currentLayers || !stage || !lightboxImage || !overlayImage) return;
+      const [topLayer, bottomLayer] = activePair;
+      const topSrc = currentLayers[topLayer];
+      const bottomSrc = currentLayers[bottomLayer];
+      if (!topSrc || !bottomSrc) return;
+
+      const rect = stage.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+      const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+      const radius = Math.max(60, rect.width * 0.14);
+
+      lightboxImage.src = bottomSrc;
+      overlayImage.src = topSrc;
+      overlayImage.alt = lightboxImage.alt;
+      overlayImage.style.clipPath = 'inset(0 0 0 0)';
+      const mask = `radial-gradient(circle ${radius}px at ${x}px ${y}px, transparent 0, transparent ${radius * 0.72}px, black ${radius}px)`;
+      overlayImage.style.webkitMaskImage = mask;
+      overlayImage.style.maskImage = mask;
+      overlayImage.style.webkitMaskRepeat = 'no-repeat';
+      overlayImage.style.maskRepeat = 'no-repeat';
+    };
+
+    const renderMousouDefault = () => {
+      if (!currentLayers || !lightboxImage || !overlayImage) return;
+      const [topLayer, bottomLayer] = activePair;
+      const topSrc = currentLayers[topLayer];
+      const bottomSrc = currentLayers[bottomLayer];
+      if (!topSrc || !bottomSrc) return;
+
+      lightboxImage.src = bottomSrc;
+      overlayImage.src = topSrc;
+      overlayImage.alt = lightboxImage.alt;
+      overlayImage.style.clipPath = 'inset(0 0 0 0)';
+      overlayImage.style.webkitMaskImage = '';
+      overlayImage.style.maskImage = '';
+      overlayImage.style.webkitMaskRepeat = '';
+      overlayImage.style.maskRepeat = '';
     };
 
     const showGameTile = async tile => {
@@ -166,16 +227,18 @@
 
       currentLayers = gamePhoto.layers;
       lightboxImage.alt = gamePhoto.filename || '';
-      if (overlayImage) {
-        overlayImage.removeAttribute('src');
-        overlayImage.style.clipPath = 'inset(0 100% 0 0)';
-      }
+      resetOverlay();
       setActivePair(['1', '2']);
-      renderPairPosition(1);
+      if (mousouMode) {
+        renderMousouDefault();
+      } else {
+        renderPairPosition(0);
+      }
       lightbox.dataset.photoId = photoId;
       lightbox.hidden = false;
       requestAnimationFrame(() => {
         lightbox.classList.add('is-open');
+        applyModeClass();
       });
     };
 
@@ -192,6 +255,10 @@
 
     const updateScrubFromEvent = event => {
       if (!stage || !lightbox.classList.contains('is-open')) return;
+      if (mousouMode) {
+        renderMousouPosition(event);
+        return;
+      }
       const rect = stage.getBoundingClientRect();
       if (!rect.width) return;
       const ratio = (event.clientX - rect.left) / rect.width;
@@ -203,7 +270,12 @@
       const pair = pairValue.split('|');
       if (pair.length !== 2) return;
       setActivePair(pair);
-      renderPairPosition(1);
+      resetOverlay();
+      if (mousouMode) {
+        renderMousouDefault();
+      } else {
+        renderPairPosition(0);
+      }
     };
 
     grid?.querySelectorAll('.favorite-wall-image').forEach(image => {
@@ -254,9 +326,9 @@
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
             setActivePair(['1', '2']);
-            overlayImage?.removeAttribute('src');
-            if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+            resetOverlay();
             stage?.classList.remove('is-scrubbing');
+            stage?.classList.remove('is-mousou');
           });
         }
       });
@@ -276,10 +348,24 @@
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
             setActivePair(['1', '2']);
-            overlayImage?.removeAttribute('src');
-            if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+            resetOverlay();
             stage?.classList.remove('is-scrubbing');
+            stage?.classList.remove('is-mousou');
           });
+        }
+      });
+    }
+
+    if (modeToggle && modeToggle.dataset.bound !== 'true') {
+      modeToggle.dataset.bound = 'true';
+      modeToggle.addEventListener('change', () => {
+        mousouMode = modeToggle.checked;
+        applyModeClass();
+        resetOverlay();
+        if (mousouMode) {
+          renderMousouDefault();
+        } else {
+          renderPairPosition(0);
         }
       });
     }
@@ -288,12 +374,18 @@
       stage.dataset.scrubBound = 'true';
       stage.addEventListener('mouseenter', () => {
         if (lightbox?.classList.contains('is-open')) {
-          stage.classList.add('is-scrubbing');
+          applyModeClass();
         }
       });
       stage.addEventListener('mouseleave', () => {
         stage.classList.remove('is-scrubbing');
-        renderPairPosition(1);
+        stage.classList.remove('is-mousou');
+        resetOverlay();
+        if (mousouMode) {
+          renderMousouDefault();
+        } else {
+          renderPairPosition(0);
+        }
       });
       stage.addEventListener('mousemove', updateScrubFromEvent);
     }

@@ -9,6 +9,17 @@
     <div class="favorite-lightbox-dialog">
       <button class="favorite-lightbox-nav favorite-lightbox-prev" type="button" aria-label="Previous photo" data-lightbox-prev>‹</button>
       <button class="favorite-lightbox-close" type="button" aria-label="Close preview" data-lightbox-close>✕</button>
+      {% if view_name == 'game' %}
+      <label class="layout-switch game-mode-switch" for="game-mode-toggle">
+        <input type="checkbox" id="game-mode-toggle" data-game-mode-toggle>
+        <span class="layout-switch-button">
+          <span class="layout-switch-track">
+            <span class="layout-switch-knob"></span>
+          </span>
+          <span class="layout-switch-label">妄撮</span>
+        </span>
+      </label>
+      {% endif %}
       <div class="favorite-lightbox-stage{% if view_name == 'game' %} favorite-lightbox-stage-game{% endif %}" id="favorite-lightbox-stage">
         <img class="favorite-lightbox-image{% if view_name == 'game' %} game-lightbox-base{% endif %}" id="favorite-lightbox-image" alt="">
         {% if view_name == 'game' %}
