@@ -1,10 +1,29 @@
 {% if layout_mode == 'wall' %}
 <div class="favorites-panel favorites-panel-wall" id="favorite-panel-body" data-layout="wall" data-stack='{{ stack_ids_json|safe }}' data-view="favorites">
-  {% if stack_ids %}
-  <div class="favorites-wall-grid">
-    {% for photo_id in stack_ids %}
-    <button class="favorite-wall-tile" type="button" data-photo-id="{{ photo_id }}"></button>
-    {% endfor %}
+  {% if favorite_photos %}
+  <div class="favorites-wall-grid" id="favorites-wall-grid">
+    {% include 'selector/_favorite_wall_tiles.html' %}
+  </div>
+  <div class="favorite-lightbox" id="favorite-lightbox" hidden>
+    <div class="favorite-lightbox-backdrop" data-lightbox-close></div>
+    <div class="favorite-lightbox-dialog">
+      <button class="favorite-lightbox-nav favorite-lightbox-prev" type="button" aria-label="Previous photo" data-lightbox-prev>‹</button>
+      <button class="favorite-lightbox-close" type="button" aria-label="Close preview" data-lightbox-close>✕</button>
+      <div class="favorite-lightbox-stage{% if view_name == 'game' %} favorite-lightbox-stage-game{% endif %}" id="favorite-lightbox-stage">
+        <img class="favorite-lightbox-image{% if view_name == 'game' %} game-lightbox-base{% endif %}" id="favorite-lightbox-image" alt="">
+        {% if view_name == 'game' %}
+        <img class="favorite-lightbox-image game-lightbox-overlay" id="game-lightbox-overlay" alt="">
+        {% endif %}
+      </div>
+      <button class="favorite-lightbox-nav favorite-lightbox-next" type="button" aria-label="Next photo" data-lightbox-next>›</button>
+    </div>
+    {% if view_name == 'game' %}
+    <div class="game-layer-bar">
+      <button class="ghost-btn game-layer-btn" type="button" data-game-layer="1">Original</button>
+      <button class="ghost-btn game-layer-btn" type="button" data-game-layer="2">Selected</button>
+      <button class="ghost-btn game-layer-btn" type="button" data-game-layer="3">Final</button>
+    </div>
+    {% endif %}
   </div>
   {% else %}
   <div class="empty-state">

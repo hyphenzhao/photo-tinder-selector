@@ -1,0 +1,14 @@
+{% for photo in favorite_photos %}
+<div class="favorite-wall-tile" data-photo-id="{{ photo.id }}" data-image-url="{{ photo.image_url }}" data-filename="{{ photo.filename }}">
+  <img class="favorite-wall-image" data-src="{{ photo.image_url }}" alt="{{ photo.filename }}" loading="lazy">
+  <div class="favorite-wall-meta">
+    <div class="favorite-wall-name">{{ photo.filename }}</div>
+  </div>
+</div>
+{% endfor %}
+{% for _ in ''|center:favorites_placeholder_count %}
+<div class="favorite-wall-tile favorite-wall-tile-placeholder" aria-hidden="true"></div>
+{% endfor %}
+{% if favorites_next_page %}
+<div class="favorites-wall-loader" hx-get="{% if view_name == 'game' %}{% url 'selector:game' %}{% else %}{% url 'selector:favorites' %}{% endif %}?layout=wall&order={{ order_mode }}&page={{ favorites_next_page }}" hx-trigger="revealed" hx-swap="outerHTML" hx-target="this" hx-select=".favorite-wall-tile, .favorite-wall-tile-placeholder, .favorites-wall-loader"></div>
+{% endif %}

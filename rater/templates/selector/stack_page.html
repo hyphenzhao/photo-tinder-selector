@@ -3,7 +3,7 @@
 {% block title %}{{ view_name|title }} · Photo Tinder Selector{% endblock %}
 {% block content %}
 <section class="tinder-shell" data-view="{{ view_name }}">
-  {% if view_name == 'favorites' %}
+  {% if view_name == 'favorites' or view_name == 'game' %}
     {% include 'selector/_favorite_panel.html' %}
   {% else %}
   <div class="deck-wrap">
@@ -44,6 +44,7 @@
     stack: {{ stack_ids_json|safe }},
     viewName: '{{ view_name }}',
     layoutMode: '{{ layout_mode|default:"stack" }}',
+    gameApiBase: '{% url "selector:game" %}',
     csrfToken: '{{ csrf_token }}'
   };
 </script>

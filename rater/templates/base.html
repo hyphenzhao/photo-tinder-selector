@@ -17,20 +17,21 @@
     <nav class="nav-pillbar">
       <a href="{% url 'selector:home' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'home' %}active{% endif %}">Home</a>
       <a href="{% url 'selector:favorites' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'favorites' %}active{% endif %}">Favorite</a>
+      <a href="{% url 'selector:game' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'game' %}active{% endif %}">Game</a>
       <a href="{% url 'selector:disliked' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'disliked' %}active{% endif %}">Disliked</a>
-      <a href="{% url 'selector:export' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'export' %}active{% endif %}">Export</a>
+      <a href="{% url 'selector:settings' %}?order={{ order_mode|default:'random' }}" class="nav-pill {% if view_name == 'settings' %}active{% endif %}">Settings</a>
     </nav>
-    {% if view_name != 'export' %}
+    {% if view_name != 'settings' %}
     <div class="sub-toolbar">
       <form method="get" class="order-form">
         <label for="order-select">Order</label>
-        <select id="order-select" name="order" {% if view_name == 'favorites' %}hx-get="{% url 'selector:favorites' %}" hx-target="#favorite-panel-body" hx-swap="outerHTML" hx-include="#layout-toggle" hx-trigger="change"{% else %}onchange="this.form.submit()"{% endif %}>
+        <select id="order-select" name="order" {% if view_name == 'favorites' or view_name == 'game' %}hx-get="{% if view_name == 'game' %}{% url 'selector:game' %}{% else %}{% url 'selector:favorites' %}{% endif %}" hx-target="#favorite-panel-body" hx-swap="outerHTML" hx-include="#layout-toggle" hx-trigger="change"{% else %}onchange="this.form.submit()"{% endif %}>
           <option value="random" {% if order_mode == 'random' %}selected{% endif %}>Random order</option>
           <option value="recent" {% if order_mode == 'recent' %}selected{% endif %}>Most recent</option>
         </select>
-        {% if view_name == 'favorites' %}
+        {% if view_name == 'favorites' or view_name == 'game' %}
         <label class="layout-switch" for="layout-toggle">
-          <input type="checkbox" id="layout-toggle" name="layout" value="wall" {% if layout_mode == 'wall' %}checked{% endif %} hx-get="{% url 'selector:favorites' %}" hx-target="#favorite-panel-body" hx-swap="outerHTML" hx-include="#order-select" hx-trigger="change">
+          <input type="checkbox" id="layout-toggle" name="layout" value="wall" {% if layout_mode == 'wall' %}checked{% endif %} hx-get="{% if view_name == 'game' %}{% url 'selector:game' %}{% else %}{% url 'selector:favorites' %}{% endif %}" hx-target="#favorite-panel-body" hx-swap="outerHTML" hx-include="#order-select" hx-trigger="change">
           <span class="layout-switch-button">
             <span class="layout-switch-track">
               <span class="layout-switch-knob"></span>
@@ -43,7 +44,7 @@
     </div>
     {% endif %}
   </header>
-  <main class="page-shell">
+  <main class="page-shell {% if view_name == 'favorites' or view_name == 'game' %}page-shell-wide{% endif %}">
     {% if messages %}
       <div class="messages">
         {% for message in messages %}

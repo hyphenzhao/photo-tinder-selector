@@ -8,20 +8,293 @@
     return await res.json();
   }
 
-  function bindFavoriteWall(panel, ids) {
+  async function fetchGamePhoto(id) {
+    const res = await fetch(`/api/game/${id}/`);
+    if (!res.ok) return null;
+    return await res.json();
+  }
+
+  function closeLightbox(lightbox, lightboxImage, extraCleanup) {
+    if (!lightbox || !lightboxImage) return;
+    lightbox.classList.remove('is-open');
+    setTimeout(() => {
+      if (!lightbox.classList.contains('is-open')) {
+        lightbox.hidden = true;
+        lightboxImage.removeAttribute('src');
+        lightboxImage.alt = '';
+        lightbox.removeAttribute('data-photo-id');
+        extraCleanup?.();
+      }
+    }, 200);
+  }
+
+    function bindFavoriteWall(panel) {
+      if (!panel || panel.dataset.layout !== 'wall') return;
+
+      const grid = panel.querySelector('.favorites-wall-grid');
+      const lightbox = document.getElementById('favorite-lightbox');
+      const lightboxImage = document.getElementById('favorite-lightbox-image');
+      const viewTile = tile => {
+        const imageUrl = tile?.dataset.imageUrl;
+        const alt = tile?.dataset.filename || '';
+
+        if (!imageUrl || !lightbox || !lightboxImage) return;
+
+        lightboxImage.src = imageUrl;
+        lightboxImage.alt = alt;
+        lightbox.dataset.photoId = tile.dataset.photoId || '';
+        lightbox.hidden = false;
+        requestAnimationFrame(() => {
+          lightbox.classList.add('is-open');
+        });
+      };
+
+      const stepLightbox = direction => {
+        if (!grid || !lightbox?.classList.contains('is-open')) return;
+        const tiles = Array.from(grid.querySelectorAll('.favorite-wall-tile:not(.favorite-wall-tile-placeholder)'));
+        if (!tiles.length) return;
+
+        const currentId = lightbox.dataset.photoId;
+        const currentIndex = tiles.findIndex(tile => tile.dataset.photoId === currentId);
+        const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+        const nextIndex = (fallbackIndex + direction + tiles.length) % tiles.length;
+        viewTile(tiles[nextIndex]);
+      };
+
+      grid?.querySelectorAll('.favorite-wall-image').forEach(image => {
+        const tile = image.closest('.favorite-wall-tile');
+        const reveal = () => tile?.classList.add('has-image');
+
+        if (!image.getAttribute('src') && image.dataset.src) {
+          image.src = image.dataset.src;
+        }
+
+        if (image.complete && image.naturalWidth > 0) {
+          reveal();
+        } else {
+          image.addEventListener('load', reveal, { once: true });
+        }
+      });
+
+      if (grid && grid.dataset.lightboxBound !== 'true') {
+        grid.dataset.lightboxBound = 'true';
+
+        grid.addEventListener('click', event => {
+          const tile = event.target.closest('.favorite-wall-tile:not(.favorite-wall-tile-placeholder)');
+          if (!tile) return;
+
+          viewTile(tile);
+        });
+      }
+
+      if (lightbox && lightbox.dataset.bound !== 'true') {
+        lightbox.dataset.bound = 'true';
+
+        lightbox.addEventListener('click', event => {
+          if (event.target.closest('[data-lightbox-prev]')) {
+            stepLightbox(-1);
+            return;
+          }
+
+          if (event.target.closest('[data-lightbox-next]')) {
+            stepLightbox(1);
+            return;
+          }
+
+          if (event.target.closest('[data-lightbox-close]')) {
+            closeLightbox(lightbox, lightboxImage);
+          }
+        });
+
+        window.addEventListener('keydown', event => {
+          if (event.key === 'ArrowLeft') {
+            stepLightbox(-1);
+            return;
+          }
+
+          if (event.key === 'ArrowRight') {
+            stepLightbox(1);
+            return;
+          }
+
+          if (event.key === 'Escape') {
+            closeLightbox(lightbox, lightboxImage);
+          }
+        });
+      }
+    }
+
+  function initGameWall(panel) {
     if (!panel || panel.dataset.layout !== 'wall') return;
-    const tiles = Array.from(panel.querySelectorAll('.favorite-wall-tile'));
-    tiles.forEach(async tile => {
-      const photo = await fetchPhoto(tile.dataset.photoId);
-      if (!photo) return;
-      tile.classList.add('has-image');
-      tile.innerHTML = `
-        <img src="${photo.image_url}" alt="${photo.filename}" loading="lazy">
-        <div class="favorite-wall-meta">
-          <div class="favorite-wall-name">${photo.filename}</div>
-        </div>
-      `;
+
+    const grid = panel.querySelector('.favorites-wall-grid');
+    const lightbox = document.getElementById('favorite-lightbox');
+    const lightboxImage = document.getElementById('favorite-lightbox-image');
+    const overlayImage = document.getElementById('game-lightbox-overlay');
+    const layerButtons = Array.from(document.querySelectorAll('[data-game-layer]'));
+    let currentLayers = null;
+    let activeLayer = '1';
+    let animating = false;
+
+    const setActiveLayer = layer => {
+      activeLayer = layer;
+      layerButtons.forEach(button => {
+        button.classList.toggle('is-active', button.dataset.gameLayer === layer);
+      });
+    };
+
+    const setButtonsDisabled = disabled => {
+      layerButtons.forEach(button => {
+        button.disabled = disabled;
+      });
+    };
+
+    const showGameTile = async tile => {
+      const photoId = tile?.dataset.photoId;
+      if (!photoId || !lightbox || !lightboxImage) return;
+
+      const gamePhoto = await fetchGamePhoto(photoId);
+      if (!gamePhoto) return;
+
+      currentLayers = gamePhoto.layers;
+      lightboxImage.src = currentLayers['1'] || '';
+      lightboxImage.alt = gamePhoto.filename || '';
+      if (overlayImage) {
+        overlayImage.removeAttribute('src');
+        overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+      }
+      setActiveLayer('1');
+      setButtonsDisabled(false);
+      lightbox.dataset.photoId = photoId;
+      lightbox.hidden = false;
+      requestAnimationFrame(() => {
+        lightbox.classList.add('is-open');
+      });
+    };
+
+    const stepGameLightbox = direction => {
+      if (!grid || !lightbox?.classList.contains('is-open') || animating) return;
+      const tiles = Array.from(grid.querySelectorAll('.favorite-wall-tile:not(.favorite-wall-tile-placeholder)'));
+      if (!tiles.length) return;
+      const currentId = lightbox.dataset.photoId;
+      const currentIndex = tiles.findIndex(tile => tile.dataset.photoId === currentId);
+      const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex = (fallbackIndex + direction + tiles.length) % tiles.length;
+      showGameTile(tiles[nextIndex]);
+    };
+
+    const switchLayer = async targetLayer => {
+      if (!currentLayers || targetLayer === activeLayer || animating || !lightboxImage || !overlayImage) return;
+      const targetSrc = currentLayers[targetLayer];
+      if (!targetSrc) return;
+
+      animating = true;
+      setButtonsDisabled(true);
+      overlayImage.src = targetSrc;
+      overlayImage.alt = lightboxImage.alt;
+      overlayImage.style.transition = 'none';
+      overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+
+      requestAnimationFrame(() => {
+        overlayImage.style.transition = 'clip-path .45s ease';
+        overlayImage.style.clipPath = 'inset(0 0 0 0)';
+      });
+
+      setTimeout(() => {
+        lightboxImage.src = targetSrc;
+        overlayImage.removeAttribute('src');
+        overlayImage.style.transition = 'none';
+        overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+        setActiveLayer(targetLayer);
+        setButtonsDisabled(false);
+        animating = false;
+      }, 470);
+    };
+
+    grid?.querySelectorAll('.favorite-wall-image').forEach(image => {
+      const tile = image.closest('.favorite-wall-tile');
+      const reveal = () => tile?.classList.add('has-image');
+
+      if (!image.getAttribute('src') && image.dataset.src) {
+        image.src = image.dataset.src;
+      }
+
+      if (image.complete && image.naturalWidth > 0) {
+        reveal();
+      } else {
+        image.addEventListener('load', reveal, { once: true });
+      }
     });
+
+    if (grid && grid.dataset.lightboxBound !== 'true') {
+      grid.dataset.lightboxBound = 'true';
+      grid.addEventListener('click', event => {
+        const tile = event.target.closest('.favorite-wall-tile:not(.favorite-wall-tile-placeholder)');
+        if (!tile) return;
+        showGameTile(tile);
+      });
+    }
+
+    if (lightbox && lightbox.dataset.bound !== 'true') {
+      lightbox.dataset.bound = 'true';
+
+      lightbox.addEventListener('click', event => {
+        if (event.target.closest('[data-lightbox-prev]')) {
+          stepGameLightbox(-1);
+          return;
+        }
+
+        if (event.target.closest('[data-lightbox-next]')) {
+          stepGameLightbox(1);
+          return;
+        }
+
+        const layerButton = event.target.closest('[data-game-layer]');
+        if (layerButton) {
+          switchLayer(layerButton.dataset.gameLayer);
+          return;
+        }
+
+        if (event.target.closest('[data-lightbox-close]')) {
+          closeLightbox(lightbox, lightboxImage, () => {
+            currentLayers = null;
+            activeLayer = '1';
+            animating = false;
+            setButtonsDisabled(false);
+            overlayImage?.removeAttribute('src');
+            if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+          });
+        }
+      });
+
+      window.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') {
+          stepGameLightbox(-1);
+          return;
+        }
+
+        if (event.key === 'ArrowRight') {
+          stepGameLightbox(1);
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          closeLightbox(lightbox, lightboxImage, () => {
+            currentLayers = null;
+            activeLayer = '1';
+            animating = false;
+            setButtonsDisabled(false);
+            overlayImage?.removeAttribute('src');
+            if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+          });
+        }
+      });
+    }
+
+    if (layerButtons.length && !lightbox?.dataset.gameButtonsBound) {
+      lightbox.dataset.gameButtonsBound = 'true';
+      setActiveLayer('1');
+    }
   }
 
   function initStack(panel) {
@@ -191,6 +464,10 @@
 
   function initFavoritePanel(panel) {
     if (!panel) return;
+    if (cfg.viewName === 'game' && panel.dataset.layout === 'wall') {
+      initGameWall(panel);
+      return;
+    }
     if (panel.dataset.layout === 'wall') {
       bindFavoriteWall(panel);
       return;
@@ -199,29 +476,31 @@
   }
 
   const pageView = cfg.viewName;
-  if (pageView === 'favorites') {
+  if (pageView === 'favorites' || pageView === 'game') {
     const toggle = document.getElementById('layout-toggle');
     const order = document.getElementById('order-select');
-    const savedLayout = localStorage.getItem('favorites-layout');
+    const favoritesUrl = toggle?.getAttribute('hx-get') || order?.getAttribute('hx-get') || (pageView === 'game' ? '/game/' : '/favorites/');
+    const storageKey = pageView === 'game' ? 'game-layout' : 'favorites-layout';
+    const savedLayout = localStorage.getItem(storageKey);
     if (toggle && savedLayout) {
       toggle.checked = savedLayout === 'wall';
       if (order && window.htmx) {
         const params = new URLSearchParams({ order: order.value });
         if (toggle.checked) params.set('layout', 'wall');
-        window.htmx.ajax('GET', `${toggle.getAttribute('hx-get')}?${params.toString()}`, { target: '#favorite-panel-body', swap: 'outerHTML' });
+        window.htmx.ajax('GET', `${favoritesUrl}?${params.toString()}`, { target: '#favorite-panel-body', swap: 'outerHTML' });
       }
     }
     toggle?.addEventListener('change', () => {
-      localStorage.setItem('favorites-layout', toggle.checked ? 'wall' : 'stack');
+      localStorage.setItem(storageKey, toggle.checked ? 'wall' : 'stack');
     });
     order?.addEventListener('change', () => {
-      localStorage.setItem('favorites-layout', toggle?.checked ? 'wall' : 'stack');
+      localStorage.setItem(storageKey, toggle?.checked ? 'wall' : 'stack');
     });
     initFavoritePanel(document.getElementById('favorite-panel-body'));
     document.body.addEventListener('htmx:afterSwap', event => {
-      if (event.target.id === 'favorite-panel-body') {
-        initFavoritePanel(event.target);
-      }
+      const favoritePanel = document.getElementById('favorite-panel-body');
+      if (!favoritePanel) return;
+      initFavoritePanel(favoritePanel);
     });
     return;
   }

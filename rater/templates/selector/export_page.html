@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Export · Photo Tinder Selector{% endblock %}
+{% block title %}Settings · Photo Tinder Selector{% endblock %}
 {% block content %}
 <section class="settings-grid">
   <div class="panel">
@@ -13,6 +13,14 @@
       <label>
         <span>Output folder</span>
         {{ form.output_folder }}
+      </label>
+      <label>
+        <span>Original picture folder</span>
+        {{ form.original_folder }}
+      </label>
+      <label>
+        <span>Final picture folder</span>
+        {{ form.final_folder }}
       </label>
       <div class="button-row">
         <button class="primary-btn" type="button" id="save-config-btn">Save folders</button>
@@ -57,6 +65,8 @@
   const rescanBtn = document.getElementById('rescan-btn');
   const sourceInput = document.getElementById('id_source_folder');
   const outputInput = document.getElementById('id_output_folder');
+  const originalInput = document.getElementById('id_original_folder');
+  const finalInput = document.getElementById('id_final_folder');
   const msg = document.getElementById('scan-message');
   const pct = document.getElementById('scan-percent');
   const meta = document.getElementById('scan-meta');
@@ -93,6 +103,8 @@
     const form = new FormData();
     form.append('source_folder', sourceInput.value);
     form.append('output_folder', outputInput.value);
+    form.append('original_folder', originalInput.value);
+    form.append('final_folder', finalInput.value);
     const res = await fetch('/api/config/save/', {
       method: 'POST',
       headers: { 'X-CSRFToken': csrf },

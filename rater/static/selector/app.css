@@ -85,6 +85,7 @@ body {
   font-weight: 600;
 }
 .page-shell { max-width: 1100px; margin: 0 auto; padding: 24px 20px 44px; }
+.page-shell-wide { max-width: 100vw; width: 100vw; }
 .messages { display: grid; gap: 10px; margin-bottom: 18px; }
 .message { padding: 12px 16px; border-radius: 14px; background: rgba(255,255,255,.08); }
 .message.success { border: 1px solid rgba(95,224,170,.35); }
@@ -112,6 +113,10 @@ body {
   cursor: pointer;
   aspect-ratio: 4 / 5;
 }
+.favorite-wall-tile-placeholder {
+  cursor: default;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
 .favorite-wall-tile::before {
   content: "";
   display: block;
@@ -122,17 +127,23 @@ body {
 .favorite-wall-tile.has-image::before {
   display: none;
 }
-.favorite-wall-tile img {
+.favorite-wall-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.favorite-wall-tile.has-image .favorite-wall-image {
+  opacity: 1;
 }
 .favorite-wall-meta {
   position: absolute;
   inset: auto 0 0 0;
   padding: 12px;
   background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.72) 100%);
+  pointer-events: none;
 }
 .favorite-wall-name {
   font-size: 12px;
@@ -140,6 +151,124 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.favorites-wall-loader {
+  width: 1px;
+  height: 1px;
+}
+.favorite-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.favorite-lightbox[hidden] {
+  display: none;
+}
+.favorite-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.58);
+}
+.favorite-lightbox-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(92vw, 1400px);
+  max-height: 88vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(.92);
+  opacity: 0;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.favorite-lightbox.is-open .favorite-lightbox-dialog {
+  transform: scale(1);
+  opacity: 1;
+}
+.favorite-lightbox-image {
+  max-width: 100%;
+  max-height: 88vh;
+  display: block;
+  border-radius: 18px;
+  box-shadow: 0 28px 90px rgba(0,0,0,.45);
+  background: #000;
+}
+.favorite-lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.favorite-lightbox-stage-game {
+  overflow: hidden;
+  border-radius: 18px;
+}
+.game-lightbox-base,
+.game-lightbox-overlay {
+  grid-area: 1 / 1;
+}
+.game-lightbox-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  clip-path: inset(0 100% 0 0);
+}
+.game-layer-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  gap: 10px;
+}
+.game-layer-btn.is-active {
+  background: linear-gradient(135deg, #ff4d8d, #ff7a59);
+}
+.game-layer-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+.favorite-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.6);
+  color: white;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  z-index: 2;
+}
+.favorite-lightbox-prev {
+  left: 18px;
+}
+.favorite-lightbox-next {
+  right: 18px;
+}
+.favorite-lightbox-close {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,.72);
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
 }
 .deck-wrap { width:min(100%, 420px); min-height: 68vh; display:flex; align-items:center; justify-content:center; position:relative; }
 @media (max-width: 600px) {
@@ -162,6 +291,24 @@ body {
     max-width: 170px;
     font-size: 12px;
     padding: 7px 10px;
+  }
+  .favorite-lightbox-nav {
+    width: 44px;
+    height: 44px;
+    font-size: 28px;
+  }
+  .favorite-lightbox-prev {
+    left: 8px;
+  }
+  .favorite-lightbox-next {
+    right: 8px;
+  }
+  .game-layer-bar {
+    bottom: 12px;
+    width: calc(100% - 24px);
+  }
+  .game-layer-btn {
+    flex: 1 1 0;
   }
   .nav-pill {
     flex: 1 1 0;
