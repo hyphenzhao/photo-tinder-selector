@@ -218,6 +218,9 @@ body {
   object-fit: contain;
   clip-path: inset(0 100% 0 0);
 }
+.favorite-lightbox-stage-game.is-scrubbing {
+  cursor: ew-resize;
+}
 .game-layer-bar {
   position: absolute;
   bottom: 24px;
@@ -229,10 +232,6 @@ body {
 }
 .game-layer-btn.is-active {
   background: linear-gradient(135deg, #ff4d8d, #ff7a59);
-}
-.game-layer-btn:disabled {
-  opacity: .5;
-  cursor: default;
 }
 .favorite-lightbox-nav {
   position: absolute;

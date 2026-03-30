@@ -129,24 +129,32 @@
 
     const grid = panel.querySelector('.favorites-wall-grid');
     const lightbox = document.getElementById('favorite-lightbox');
+    const stage = document.getElementById('favorite-lightbox-stage');
     const lightboxImage = document.getElementById('favorite-lightbox-image');
     const overlayImage = document.getElementById('game-lightbox-overlay');
-    const layerButtons = Array.from(document.querySelectorAll('[data-game-layer]'));
+    const pairButtons = Array.from(document.querySelectorAll('[data-game-pair]'));
     let currentLayers = null;
-    let activeLayer = '1';
-    let animating = false;
+    let activePair = ['1', '2'];
 
-    const setActiveLayer = layer => {
-      activeLayer = layer;
-      layerButtons.forEach(button => {
-        button.classList.toggle('is-active', button.dataset.gameLayer === layer);
+    const setActivePair = pair => {
+      activePair = pair;
+      pairButtons.forEach(button => {
+        button.classList.toggle('is-active', button.dataset.gamePair === pair.join('|'));
       });
     };
 
-    const setButtonsDisabled = disabled => {
-      layerButtons.forEach(button => {
-        button.disabled = disabled;
-      });
+    const renderPairPosition = ratio => {
+      if (!currentLayers || !lightboxImage || !overlayImage) return;
+      const [leftLayer, rightLayer] = activePair;
+      const leftSrc = currentLayers[leftLayer];
+      const rightSrc = currentLayers[rightLayer];
+      if (!leftSrc || !rightSrc) return;
+
+      lightboxImage.src = leftSrc;
+      overlayImage.src = rightSrc;
+      overlayImage.alt = lightboxImage.alt;
+      const percent = Math.max(0, Math.min(1, ratio)) * 100;
+      overlayImage.style.clipPath = `inset(0 0 0 ${percent}%)`;
     };
 
     const showGameTile = async tile => {
@@ -157,14 +165,13 @@
       if (!gamePhoto) return;
 
       currentLayers = gamePhoto.layers;
-      lightboxImage.src = currentLayers['1'] || '';
       lightboxImage.alt = gamePhoto.filename || '';
       if (overlayImage) {
         overlayImage.removeAttribute('src');
         overlayImage.style.clipPath = 'inset(0 100% 0 0)';
       }
-      setActiveLayer('1');
-      setButtonsDisabled(false);
+      setActivePair(['1', '2']);
+      renderPairPosition(1);
       lightbox.dataset.photoId = photoId;
       lightbox.hidden = false;
       requestAnimationFrame(() => {
@@ -173,7 +180,7 @@
     };
 
     const stepGameLightbox = direction => {
-      if (!grid || !lightbox?.classList.contains('is-open') || animating) return;
+      if (!grid || !lightbox?.classList.contains('is-open')) return;
       const tiles = Array.from(grid.querySelectorAll('.favorite-wall-tile:not(.favorite-wall-tile-placeholder)'));
       if (!tiles.length) return;
       const currentId = lightbox.dataset.photoId;
@@ -183,32 +190,20 @@
       showGameTile(tiles[nextIndex]);
     };
 
-    const switchLayer = async targetLayer => {
-      if (!currentLayers || targetLayer === activeLayer || animating || !lightboxImage || !overlayImage) return;
-      const targetSrc = currentLayers[targetLayer];
-      if (!targetSrc) return;
+    const updateScrubFromEvent = event => {
+      if (!stage || !lightbox.classList.contains('is-open')) return;
+      const rect = stage.getBoundingClientRect();
+      if (!rect.width) return;
+      const ratio = (event.clientX - rect.left) / rect.width;
+      renderPairPosition(ratio);
+    };
 
-      animating = true;
-      setButtonsDisabled(true);
-      overlayImage.src = targetSrc;
-      overlayImage.alt = lightboxImage.alt;
-      overlayImage.style.transition = 'none';
-      overlayImage.style.clipPath = 'inset(0 100% 0 0)';
-
-      requestAnimationFrame(() => {
-        overlayImage.style.transition = 'clip-path .45s ease';
-        overlayImage.style.clipPath = 'inset(0 0 0 0)';
-      });
-
-      setTimeout(() => {
-        lightboxImage.src = targetSrc;
-        overlayImage.removeAttribute('src');
-        overlayImage.style.transition = 'none';
-        overlayImage.style.clipPath = 'inset(0 100% 0 0)';
-        setActiveLayer(targetLayer);
-        setButtonsDisabled(false);
-        animating = false;
-      }, 470);
+    const switchPair = pairValue => {
+      if (!pairValue || !currentLayers) return;
+      const pair = pairValue.split('|');
+      if (pair.length !== 2) return;
+      setActivePair(pair);
+      renderPairPosition(1);
     };
 
     grid?.querySelectorAll('.favorite-wall-image').forEach(image => {
@@ -249,20 +244,19 @@
           return;
         }
 
-        const layerButton = event.target.closest('[data-game-layer]');
-        if (layerButton) {
-          switchLayer(layerButton.dataset.gameLayer);
+        const pairButton = event.target.closest('[data-game-pair]');
+        if (pairButton) {
+          switchPair(pairButton.dataset.gamePair);
           return;
         }
 
         if (event.target.closest('[data-lightbox-close]')) {
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
-            activeLayer = '1';
-            animating = false;
-            setButtonsDisabled(false);
+            setActivePair(['1', '2']);
             overlayImage?.removeAttribute('src');
             if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+            stage?.classList.remove('is-scrubbing');
           });
         }
       });
@@ -281,19 +275,32 @@
         if (event.key === 'Escape') {
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
-            activeLayer = '1';
-            animating = false;
-            setButtonsDisabled(false);
+            setActivePair(['1', '2']);
             overlayImage?.removeAttribute('src');
             if (overlayImage) overlayImage.style.clipPath = 'inset(0 100% 0 0)';
+            stage?.classList.remove('is-scrubbing');
           });
         }
       });
     }
 
-    if (layerButtons.length && !lightbox?.dataset.gameButtonsBound) {
+    if (stage && stage.dataset.scrubBound !== 'true') {
+      stage.dataset.scrubBound = 'true';
+      stage.addEventListener('mouseenter', () => {
+        if (lightbox?.classList.contains('is-open')) {
+          stage.classList.add('is-scrubbing');
+        }
+      });
+      stage.addEventListener('mouseleave', () => {
+        stage.classList.remove('is-scrubbing');
+        renderPairPosition(1);
+      });
+      stage.addEventListener('mousemove', updateScrubFromEvent);
+    }
+
+    if (pairButtons.length && !lightbox?.dataset.gameButtonsBound) {
       lightbox.dataset.gameButtonsBound = 'true';
-      setActiveLayer('1');
+      setActivePair(['1', '2']);
     }
   }
 
