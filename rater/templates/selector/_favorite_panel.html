@@ -1,5 +1,45 @@
 {% if layout_mode == 'wall' %}
 <div class="favorites-panel favorites-panel-wall" id="favorite-panel-body" data-layout="wall" data-stack='{{ stack_ids_json|safe }}' data-view="favorites">
+  <section class="wall-filter-shell{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %} is-open{% endif %}" id="wall-filter-shell">
+    <button class="ghost-btn wall-filter-toggle" type="button" id="wall-filter-toggle" aria-expanded="{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %}true{% else %}false{% endif %}">
+      <span>Filter</span>
+      <span class="wall-filter-toggle-icon">▾</span>
+    </button>
+    <div class="wall-filter-panel{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %} is-open{% endif %}" id="wall-filter-panel" {% if wall_filters.outfit_from == None and wall_filters.outfit_to == None and wall_filters.girl_from == None and wall_filters.girl_to == None and not wall_filters.video_ready %}hidden{% endif %}>
+      <div class="wall-filter-grid">
+      <label>
+        <span>Outfit from</span>
+        <input type="number" id="filter-outfit-from" value="{{ wall_filters.outfit_from|default:'' }}">
+      </label>
+      <label>
+        <span>Outfit to</span>
+        <input type="number" id="filter-outfit-to" value="{{ wall_filters.outfit_to|default:'' }}">
+      </label>
+      <label>
+        <span>Girl from</span>
+        <input type="number" id="filter-girl-from" value="{{ wall_filters.girl_from|default:'' }}">
+      </label>
+      <label>
+        <span>Girl to</span>
+        <input type="number" id="filter-girl-to" value="{{ wall_filters.girl_to|default:'' }}">
+      </label>
+      {% if view_name == 'game' %}
+      <label>
+        <span>Video ready</span>
+        <select id="filter-video-ready">
+          <option value="" {% if not wall_filters.video_ready %}selected{% endif %}>Any</option>
+          <option value="yes" {% if wall_filters.video_ready == 'yes' %}selected{% endif %}>Ready</option>
+          <option value="no" {% if wall_filters.video_ready == 'no' %}selected{% endif %}>Not ready</option>
+        </select>
+      </label>
+      {% endif %}
+      </div>
+      <div class="button-row">
+        <button class="primary-btn" type="button" id="apply-wall-filter">Apply filter</button>
+        <button class="ghost-btn" type="button" id="clear-wall-filter">Clear</button>
+      </div>
+    </div>
+  </section>
   {% if favorite_photos %}
   <div class="favorites-wall-grid" id="favorites-wall-grid">
     {% include 'selector/_favorite_wall_tiles.html' %}
@@ -31,9 +71,12 @@
     {% if view_name == 'game' %}
     <div class="game-layer-bar">
       <button class="ghost-btn game-layer-btn" type="button" data-game-pair="1|2">Layer 1|2</button>
+      <button class="ghost-btn game-layer-btn game-layer-play" type="button" data-game-video="1">▶</button>
       <button class="ghost-btn game-layer-btn" type="button" data-game-pair="2|3">Layer 2|3</button>
+      <button class="ghost-btn game-layer-btn game-layer-play" type="button" data-game-video="2">▶</button>
       <button class="ghost-btn game-layer-btn" type="button" data-game-pair="1|3">Layer 1|3</button>
     </div>
+    <video class="game-lightbox-video" id="game-lightbox-video" playsinline hidden></video>
     {% endif %}
   </div>
   {% else %}

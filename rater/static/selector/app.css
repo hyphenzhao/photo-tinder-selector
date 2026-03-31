@@ -97,6 +97,58 @@ body {
 .tinder-shell { display:flex; flex-direction:column; align-items:center; gap:18px; }
 .favorites-panel { width: 100%; display:flex; flex-direction:column; align-items:center; gap:18px; }
 .favorites-panel-wall { align-items: stretch; }
+.wall-filter-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wall-filter-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.wall-filter-toggle-icon {
+  display: inline-block;
+  transition: transform .2s ease;
+}
+.wall-filter-shell.is-open .wall-filter-toggle-icon {
+  transform: rotate(180deg);
+}
+.wall-filter-panel {
+  margin-bottom: 4px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+}
+.wall-filter-panel.is-open {
+  display: block;
+}
+.wall-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.wall-filter-grid label {
+  display: block;
+}
+.wall-filter-grid span {
+  display: block;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.wall-filter-grid input,
+.wall-filter-grid select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: white;
+}
 .favorites-wall-grid {
   width: 100%;
   display: grid;
@@ -218,6 +270,16 @@ body {
   object-fit: contain;
   clip-path: inset(0 100% 0 0);
 }
+.game-lightbox-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 18px;
+  background: #000;
+  z-index: 1;
+}
 .favorite-lightbox-stage-game.is-scrubbing {
   cursor: ew-resize;
 }
@@ -246,6 +308,10 @@ body {
 }
 .game-layer-btn.is-active {
   background: linear-gradient(135deg, #ff4d8d, #ff7a59);
+}
+.game-layer-btn.is-disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 .favorite-lightbox-nav {
   position: absolute;
@@ -420,10 +486,12 @@ body {
 @media (max-width: 860px) {
   .stats-row, .settings-grid { grid-template-columns: 1fr 1fr; }
   .favorites-wall-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wall-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
   .stats-row, .settings-grid { grid-template-columns: 1fr; }
   .round-btn { width:64px; height:64px; }
   .deck-wrap { min-height: 60vh; }
   .favorites-wall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 10px; }
+  .wall-filter-grid { grid-template-columns: 1fr; }
 }

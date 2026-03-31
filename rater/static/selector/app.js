@@ -132,17 +132,43 @@
     const stage = document.getElementById('favorite-lightbox-stage');
     const lightboxImage = document.getElementById('favorite-lightbox-image');
     const overlayImage = document.getElementById('game-lightbox-overlay');
+    const videoPlayer = document.getElementById('game-lightbox-video');
     const modeToggle = document.querySelector('[data-game-mode-toggle]');
     const pairButtons = Array.from(document.querySelectorAll('[data-game-pair]'));
+    const videoButtons = Array.from(document.querySelectorAll('[data-game-video]'));
     let currentLayers = null;
+    let currentVideos = null;
     let activePair = ['1', '2'];
     let mousouMode = Boolean(modeToggle?.checked);
+    let playingVideoLayer = null;
 
     const setActivePair = pair => {
       activePair = pair;
       pairButtons.forEach(button => {
         button.classList.toggle('is-active', button.dataset.gamePair === pair.join('|'));
       });
+    };
+
+    const syncVideoButtons = () => {
+      videoButtons.forEach(button => {
+        const layer = button.dataset.gameVideo;
+        const disabled = mousouMode || !currentVideos?.[layer] || playingVideoLayer !== null;
+        button.disabled = disabled;
+        button.classList.toggle('is-disabled', disabled);
+      });
+    };
+
+    const stopVideoPlayback = () => {
+      playingVideoLayer = null;
+      if (!videoPlayer) {
+        syncVideoButtons();
+        return;
+      }
+      videoPlayer.pause();
+      videoPlayer.hidden = true;
+      videoPlayer.removeAttribute('src');
+      videoPlayer.load();
+      syncVideoButtons();
     };
 
     const resetOverlay = () => {
@@ -226,7 +252,9 @@
       if (!gamePhoto) return;
 
       currentLayers = gamePhoto.layers;
+      currentVideos = gamePhoto.videos || {};
       lightboxImage.alt = gamePhoto.filename || '';
+      stopVideoPlayback();
       resetOverlay();
       setActivePair(['1', '2']);
       if (mousouMode) {
@@ -267,6 +295,7 @@
 
     const switchPair = pairValue => {
       if (!pairValue || !currentLayers) return;
+      stopVideoPlayback();
       const pair = pairValue.split('|');
       if (pair.length !== 2) return;
       setActivePair(pair);
@@ -276,6 +305,30 @@
       } else {
         renderPairPosition(0);
       }
+    };
+
+    const playBakuiVideo = layer => {
+      if (!videoPlayer || !currentLayers || !currentVideos?.[layer] || mousouMode || playingVideoLayer !== null) return;
+      const targetPair = layer === '1' ? ['2', '3'] : ['1', '3'];
+      const targetLayer = layer === '1' ? '2' : '3';
+      playingVideoLayer = layer;
+      syncVideoButtons();
+      resetOverlay();
+      lightboxImage.src = currentLayers[targetLayer];
+      videoPlayer.src = currentVideos[layer];
+      videoPlayer.hidden = false;
+      const finalize = () => {
+        stopVideoPlayback();
+        setActivePair(targetPair);
+        if (mousouMode) {
+          renderMousouDefault();
+        } else {
+          renderPairPosition(0);
+        }
+      };
+      videoPlayer.onended = finalize;
+      videoPlayer.onerror = finalize;
+      videoPlayer.play().catch(finalize);
     };
 
     grid?.querySelectorAll('.favorite-wall-image').forEach(image => {
@@ -322,9 +375,17 @@
           return;
         }
 
+        const videoButton = event.target.closest('[data-game-video]');
+        if (videoButton) {
+          playBakuiVideo(videoButton.dataset.gameVideo);
+          return;
+        }
+
         if (event.target.closest('[data-lightbox-close]')) {
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
+            currentVideos = null;
+            stopVideoPlayback();
             setActivePair(['1', '2']);
             resetOverlay();
             stage?.classList.remove('is-scrubbing');
@@ -347,6 +408,8 @@
         if (event.key === 'Escape') {
           closeLightbox(lightbox, lightboxImage, () => {
             currentLayers = null;
+            currentVideos = null;
+            stopVideoPlayback();
             setActivePair(['1', '2']);
             resetOverlay();
             stage?.classList.remove('is-scrubbing');
@@ -360,6 +423,7 @@
       modeToggle.dataset.bound = 'true';
       modeToggle.addEventListener('change', () => {
         mousouMode = modeToggle.checked;
+        stopVideoPlayback();
         applyModeClass();
         resetOverlay();
         if (mousouMode) {
@@ -367,6 +431,7 @@
         } else {
           renderPairPosition(0);
         }
+        syncVideoButtons();
       });
     }
 
@@ -380,6 +445,7 @@
       stage.addEventListener('mouseleave', () => {
         stage.classList.remove('is-scrubbing');
         stage.classList.remove('is-mousou');
+        stopVideoPlayback();
         resetOverlay();
         if (mousouMode) {
           renderMousouDefault();
@@ -393,6 +459,7 @@
     if (pairButtons.length && !lightbox?.dataset.gameButtonsBound) {
       lightbox.dataset.gameButtonsBound = 'true';
       setActivePair(['1', '2']);
+      syncVideoButtons();
     }
   }
 
@@ -580,26 +647,103 @@
     const order = document.getElementById('order-select');
     const favoritesUrl = toggle?.getAttribute('hx-get') || order?.getAttribute('hx-get') || (pageView === 'game' ? '/game/' : '/favorites/');
     const storageKey = pageView === 'game' ? 'game-layout' : 'favorites-layout';
+    const buildWallFilterParams = () => {
+      const params = new URLSearchParams({ order: order?.value || 'random' });
+      if (toggle?.checked) params.set('layout', 'wall');
+      const outfitFrom = document.getElementById('filter-outfit-from')?.value;
+      const outfitTo = document.getElementById('filter-outfit-to')?.value;
+      const girlFrom = document.getElementById('filter-girl-from')?.value;
+      const girlTo = document.getElementById('filter-girl-to')?.value;
+      const videoReady = document.getElementById('filter-video-ready')?.value;
+      if (outfitFrom) params.set('outfit_from', outfitFrom);
+      if (outfitTo) params.set('outfit_to', outfitTo);
+      if (girlFrom) params.set('girl_from', girlFrom);
+      if (girlTo) params.set('girl_to', girlTo);
+      if (videoReady) params.set('video_ready', videoReady);
+      return params;
+    };
+
+    const refreshWallPanel = params => {
+      if (!window.htmx) return;
+      window.htmx.ajax('GET', `${favoritesUrl}?${params.toString()}`, { target: '#favorite-panel-body', swap: 'outerHTML' });
+    };
+
     const savedLayout = localStorage.getItem(storageKey);
     if (toggle && savedLayout) {
       toggle.checked = savedLayout === 'wall';
       if (order && window.htmx) {
-        const params = new URLSearchParams({ order: order.value });
-        if (toggle.checked) params.set('layout', 'wall');
-        window.htmx.ajax('GET', `${favoritesUrl}?${params.toString()}`, { target: '#favorite-panel-body', swap: 'outerHTML' });
+        refreshWallPanel(buildWallFilterParams());
       }
     }
     toggle?.addEventListener('change', () => {
       localStorage.setItem(storageKey, toggle.checked ? 'wall' : 'stack');
+      if (toggle.checked) {
+        refreshWallPanel(buildWallFilterParams());
+      }
     });
     order?.addEventListener('change', () => {
       localStorage.setItem(storageKey, toggle?.checked ? 'wall' : 'stack');
+      if (toggle?.checked) {
+        refreshWallPanel(buildWallFilterParams());
+      }
     });
+
+    const bindWallFilters = () => {
+      const shell = document.getElementById('wall-filter-shell');
+      const panel = document.getElementById('wall-filter-panel');
+      const applyBtn = document.getElementById('apply-wall-filter');
+      const clearBtn = document.getElementById('clear-wall-filter');
+      const toggleButton = document.getElementById('wall-filter-toggle');
+
+      if (toggleButton && toggleButton.dataset.bound !== 'true') {
+        toggleButton.dataset.bound = 'true';
+        toggleButton.addEventListener('click', () => {
+          if (!panel) return;
+          panel.hidden = !panel.hidden;
+          panel.classList.toggle('is-open', !panel.hidden);
+          shell?.classList.toggle('is-open', !panel.hidden);
+          toggleButton.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+        });
+      }
+
+      if (applyBtn && applyBtn.dataset.bound !== 'true') {
+        applyBtn.dataset.bound = 'true';
+        applyBtn.addEventListener('click', () => {
+          refreshWallPanel(buildWallFilterParams());
+        });
+      }
+
+      if (clearBtn && clearBtn.dataset.bound !== 'true') {
+        clearBtn.dataset.bound = 'true';
+        clearBtn.addEventListener('click', () => {
+          ['filter-outfit-from', 'filter-outfit-to', 'filter-girl-from', 'filter-girl-to', 'filter-video-ready'].forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
+          });
+          if (panel) {
+            panel.hidden = false;
+            panel.classList.add('is-open');
+            shell?.classList.add('is-open');
+            toggleButton?.setAttribute('aria-expanded', 'true');
+          }
+          refreshWallPanel(buildWallFilterParams());
+        });
+      }
+
+      const loader = document.querySelector('.favorites-wall-loader');
+      if (loader && !loader.dataset.filterBound) {
+        loader.dataset.filterBound = 'true';
+        loader.setAttribute('hx-get', `${favoritesUrl}?${buildWallFilterParams().toString()}&page=${loader.getAttribute('hx-get')?.match(/page=(\d+)/)?.[1] || '1'}`);
+      }
+    };
+
     initFavoritePanel(document.getElementById('favorite-panel-body'));
+    bindWallFilters();
     document.body.addEventListener('htmx:afterSwap', event => {
       const favoritePanel = document.getElementById('favorite-panel-body');
       if (!favoritePanel) return;
       initFavoritePanel(favoritePanel);
+      bindWallFilters();
     });
     return;
   }

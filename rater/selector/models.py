@@ -7,6 +7,7 @@ class AppConfig(models.Model):
     output_folder = models.CharField(max_length=1000, blank=True, default="")
     original_folder = models.CharField(max_length=1000, blank=True, default="")
     final_folder = models.CharField(max_length=1000, blank=True, default="")
+    video_folder = models.CharField(max_length=1000, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

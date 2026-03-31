@@ -22,7 +22,9 @@ from .services import (
 )
 
 
-GAME_NAME_PATTERN = re.compile(r"__(girl_\d+)_\d+_", re.IGNORECASE)
+GAME_NAME_PATTERN = re.compile(r"(?:outfit_)?(\d+)__(girl_\d+)_\d+_", re.IGNORECASE)
+OUTFIT_NO_PATTERN = re.compile(r"(?:^|_)outfit_(\d+)|^(\d+)_", re.IGNORECASE)
+GIRL_NO_PATTERN = re.compile(r"girl_(\d+)", re.IGNORECASE)
 GAME_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif")
 
 
@@ -37,7 +39,8 @@ def _ordered_photo_queryset(stack_ids):
 def _favorite_wall_context(context):
     stack_ids = context["stack_ids"]
     page_number = int(context["request"].GET.get("page", 1))
-    favorite_qs = _ordered_photo_queryset(stack_ids)
+    filters = context["wall_filters"]
+    favorite_qs = [photo for photo in _ordered_photo_queryset(stack_ids) if _photo_matches_wall_filters(photo, filters, context.get("view_name") == "game")]
     page_obj = Paginator(favorite_qs, 30).get_page(page_number)
     is_game = context.get("view_name") == "game"
     context["favorite_photos"] = [
@@ -51,6 +54,84 @@ def _favorite_wall_context(context):
     context["favorites_next_page"] = page_obj.next_page_number() if page_obj.has_next() else None
     context["favorites_placeholder_count"] = 0
     return context
+
+
+def _extract_outfit_no(filename: str):
+    match = OUTFIT_NO_PATTERN.search(filename or "")
+    if not match:
+        return None
+    return int(match.group(1) or match.group(2))
+
+
+def _extract_girl_no(filename: str):
+    match = GIRL_NO_PATTERN.search(filename or "")
+    return int(match.group(1)) if match else None
+
+
+def _parse_int_or_none(value):
+    if value in {None, ""}:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _wall_filters_from_request(request):
+    return {
+        "outfit_from": _parse_int_or_none(request.GET.get("outfit_from")),
+        "outfit_to": _parse_int_or_none(request.GET.get("outfit_to")),
+        "girl_from": _parse_int_or_none(request.GET.get("girl_from")),
+        "girl_to": _parse_int_or_none(request.GET.get("girl_to")),
+        "video_ready": request.GET.get("video_ready", ""),
+    }
+
+
+def _photo_matches_wall_filters(photo: PhotoItem, filters, is_game: bool):
+    outfit_no = _extract_outfit_no(photo.filename)
+    girl_no = _extract_girl_no(photo.filename)
+
+    if filters["outfit_from"] is not None and (outfit_no is None or outfit_no < filters["outfit_from"]):
+        return False
+    if filters["outfit_to"] is not None and (outfit_no is None or outfit_no > filters["outfit_to"]):
+        return False
+    if filters["girl_from"] is not None and (girl_no is None or girl_no < filters["girl_from"]):
+        return False
+    if filters["girl_to"] is not None and (girl_no is None or girl_no > filters["girl_to"]):
+        return False
+
+    if is_game and filters["video_ready"] in {"yes", "no"}:
+        layers = _game_layers_for_photo(photo)
+        has_videos = bool(layers["videos"].get("1") and layers["videos"].get("2"))
+        if filters["video_ready"] == "yes" and not has_videos:
+            return False
+        if filters["video_ready"] == "no" and has_videos:
+            return False
+
+    return True
+
+
+def _game_video_stem(photo: PhotoItem):
+    match = GAME_NAME_PATTERN.search(photo.filename)
+    if not match:
+        filename = photo.filename
+        if filename.startswith("0001_"):
+            filename = filename.replace("0001_", "", 1)
+        return Path(filename).stem
+    outfit_no = int(match.group(1))
+    girl_no = _extract_girl_no(match.group(2))
+    if girl_no is None:
+        return Path(photo.filename).stem
+    return f"outfit_{outfit_no:03d}__girl_{girl_no:03d}"
+
+
+def _find_game_video_path(folder: str, stem: str, layer: str):
+    if not folder or not stem or not layer:
+        return None
+    candidate = Path(folder) / f"{stem}_layer{layer}.mp4"
+    if candidate.exists() and candidate.is_file():
+        return candidate
+    return None
 
 
 def _find_game_layer_path(folder: str, stem: str):
@@ -67,14 +148,21 @@ def _find_game_layer_path(folder: str, stem: str):
 def _game_layers_for_photo(photo: PhotoItem):
     cfg = get_config()
     match = GAME_NAME_PATTERN.search(photo.filename)
-    girl_stem = match.group(1) if match else None
+    girl_stem = match.group(2) if match else None
     original = _find_game_layer_path(cfg.original_folder, girl_stem)
     final = _find_game_layer_path(cfg.final_folder, girl_stem)
+    video_stem = _game_video_stem(photo)
+    video1 = _find_game_video_path(cfg.video_folder, video_stem, "1")
+    video2 = _find_game_video_path(cfg.video_folder, video_stem, "2")
     return {
         "1": str(original) if original else None,
         "2": str(Path(photo.filepath)) if Path(photo.filepath).exists() else None,
         "3": str(final) if final else None,
         "girl_stem": girl_stem,
+        "videos": {
+            "1": str(video1) if video1 else None,
+            "2": str(video2) if video2 else None,
+        },
     }
 
 
@@ -89,6 +177,7 @@ def _stack_context(request, view_name: str):
         "stack_ids_json": json.dumps(ids),
         "stats": stats(),
         "order_mode": order_mode,
+        "wall_filters": _wall_filters_from_request(request),
     }
 
 
@@ -187,6 +276,10 @@ def game_photo_api(request, photo_id: int):
                 "2": f"/api/game/{photo.id}/file/?layer=2",
                 "3": f"/api/game/{photo.id}/file/?layer=3",
             },
+            "videos": {
+                "1": f"/api/game/{photo.id}/video/?layer=1" if layers["videos"]["1"] else None,
+                "2": f"/api/game/{photo.id}/video/?layer=2" if layers["videos"]["2"] else None,
+            },
         }
     )
 
@@ -254,6 +347,21 @@ def serve_photo_file(request, photo_id: int):
                 # Not found — return useful 404
                 raise Http404(f"Image file not found: {photo.filepath}")
     # guess mime
+    import mimetypes
+    mime, _ = mimetypes.guess_type(str(path))
+    return FileResponse(path.open("rb"), content_type=mime or 'application/octet-stream')
+
+
+@require_GET
+def serve_game_video(request, photo_id: int):
+    photo = get_object_or_404(PhotoItem, pk=photo_id, exists_on_disk=True)
+    layers = _game_layers_for_photo(photo)
+    layer_path = layers.get("videos", {}).get(request.GET.get("layer", "1"))
+    if not layer_path:
+        raise Http404("Game video not found")
+    path = Path(layer_path)
+    if not path.exists() or not path.is_file():
+        raise Http404("Game video file not found")
     import mimetypes
     mime, _ = mimetypes.guess_type(str(path))
     return FileResponse(path.open("rb"), content_type=mime or 'application/octet-stream')
