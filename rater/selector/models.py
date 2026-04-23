@@ -8,6 +8,7 @@ class AppConfig(models.Model):
     original_folder = models.CharField(max_length=1000, blank=True, default="")
     final_folder = models.CharField(max_length=1000, blank=True, default="")
     video_folder = models.CharField(max_length=1000, blank=True, default="")
+    last_scan_result = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

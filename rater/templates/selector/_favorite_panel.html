@@ -1,7 +1,8 @@
 {% if layout_mode == 'wall' %}
 <div class="favorites-panel favorites-panel-wall" id="favorite-panel-body" data-layout="wall" data-stack='{{ stack_ids_json|safe }}' data-view="favorites">
+  {% comment %}
   <section class="wall-filter-shell{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %} is-open{% endif %}" id="wall-filter-shell">
-    <button class="ghost-btn wall-filter-toggle" type="button" id="wall-filter-toggle" aria-expanded="{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %}true{% else %}false{% endif %}">
+    <button class="ghost-btn wall-filter-toggle{% if view_name == 'game' and wall_filters.video_ready == 'yes' and wall_filters.outfit_from == None and wall_filters.outfit_to == None and wall_filters.girl_from == None and wall_filters.girl_to == None %} is-disabled{% endif %}" type="button" id="wall-filter-toggle" aria-expanded="{% if wall_filters.outfit_from != None or wall_filters.outfit_to != None or wall_filters.girl_from != None or wall_filters.girl_to != None or wall_filters.video_ready %}true{% else %}false{% endif %}" {% if view_name == 'game' and wall_filters.video_ready == 'yes' and wall_filters.outfit_from == None and wall_filters.outfit_to == None and wall_filters.girl_from == None and wall_filters.girl_to == None %}disabled{% endif %}>
       <span>Filter</span>
       <span class="wall-filter-toggle-icon">▾</span>
     </button>
@@ -40,6 +41,7 @@
       </div>
     </div>
   </section>
+  {% endcomment %}
   {% if favorite_photos %}
   <div class="favorites-wall-grid" id="favorites-wall-grid">
     {% include 'selector/_favorite_wall_tiles.html' %}
@@ -64,6 +66,7 @@
         <img class="favorite-lightbox-image{% if view_name == 'game' %} game-lightbox-base{% endif %}" id="favorite-lightbox-image" alt="">
         {% if view_name == 'game' %}
         <img class="favorite-lightbox-image game-lightbox-overlay" id="game-lightbox-overlay" alt="">
+        <video class="game-lightbox-video" id="game-lightbox-video" playsinline hidden></video>
         {% endif %}
       </div>
       <button class="favorite-lightbox-nav favorite-lightbox-next" type="button" aria-label="Next photo" data-lightbox-next>›</button>
@@ -76,7 +79,6 @@
       <button class="ghost-btn game-layer-btn game-layer-play" type="button" data-game-video="2">▶</button>
       <button class="ghost-btn game-layer-btn" type="button" data-game-pair="1|3">Layer 1|3</button>
     </div>
-    <video class="game-lightbox-video" id="game-lightbox-video" playsinline hidden></video>
     {% endif %}
   </div>
   {% else %}

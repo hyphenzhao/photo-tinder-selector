@@ -1,5 +1,6 @@
 import hashlib
 import random
+import re
 import shutil
 import threading
 from pathlib import Path
@@ -10,6 +11,7 @@ from django.db.models import Count
 from .models import AppConfig, PhotoItem
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
+VIDEO_NAME_PATTERN = re.compile(r"outfit_\d+__girl_\d+_layer[12]\.mp4", re.IGNORECASE)
 SCAN_LOCK = threading.Lock()
 SCAN_STATE = {
     "running": False,
@@ -43,16 +45,34 @@ def get_scan_state():
         return dict(SCAN_STATE)
 
 
+def count_ready_videos():
+    config = get_config()
+    video_root = Path(config.video_folder).expanduser() if config.video_folder else None
+    if not video_root or not video_root.exists() or not video_root.is_dir():
+        return 0
+
+    ready_pairs = set()
+    for path in video_root.rglob("*.mp4"):
+        if not path.is_file() or not VIDEO_NAME_PATTERN.match(path.name):
+            continue
+        stem = path.stem.rsplit("_layer", 1)[0]
+        layer = path.stem.rsplit("_layer", 1)[-1]
+        ready_pairs.add((stem, layer))
+
+    stems = {stem for stem, layer in ready_pairs if (stem, "1") in ready_pairs and (stem, "2") in ready_pairs}
+    return len(stems)
+
+
 def scan_source_folder(progress_callback=None):
     config = get_config()
     source = Path(config.source_folder).expanduser() if config.source_folder else None
     if not source or not source.exists() or not source.is_dir():
-        PhotoItem.objects.update(exists_on_disk=False)
-        result = {"found": 0, "added": 0, "missing": PhotoItem.objects.count()}
+        result = {"found": 0, "added": 0, "missing": PhotoItem.objects.filter(exists_on_disk=False).count()}
         if progress_callback:
             progress_callback(0, 0, "Source folder missing or invalid.")
         return result
 
+    source_prefix = str(source.resolve())
     image_files = [
         path for path in source.rglob("*")
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
@@ -101,7 +121,8 @@ def scan_source_folder(progress_callback=None):
         if progress_callback:
             progress_callback(index, total, f"Scanning {path.name} ({index}/{total})")
 
-    PhotoItem.objects.exclude(file_hash__in=seen_hashes).update(exists_on_disk=False)
+    scanned_items = PhotoItem.objects.filter(filepath__startswith=source_prefix)
+    scanned_items.exclude(file_hash__in=seen_hashes).update(exists_on_disk=False)
     result = {
         "found": len(found_paths),
         "added": added,
@@ -127,6 +148,10 @@ def start_scan_task():
 
         try:
             result = scan_source_folder(progress_callback=callback)
+            config = get_config()
+            result["videos_ready"] = count_ready_videos()
+            config.last_scan_result = result
+            config.save(update_fields=["last_scan_result", "updated_at"])
             _set_scan_state(running=False, percent=100, message="Scan complete.", result=result)
         except Exception as exc:
             _set_scan_state(running=False, message=f"Scan failed: {exc}", result={"error": str(exc)})
@@ -161,10 +186,25 @@ def export_favorites():
         return {"copied": 0, "error": "Output folder is empty."}
     output.mkdir(parents=True, exist_ok=True)
 
+    existing_hashes = set()
+    for existing in output.iterdir():
+        if not existing.is_file() or existing.suffix.lower() not in IMAGE_EXTENSIONS:
+            continue
+        try:
+            existing_hashes.add(calculate_file_hash(existing))
+        except OSError:
+            continue
+
     copied = 0
     for item in PhotoItem.objects.filter(state=PhotoItem.STATE_FAVORITE, exists_on_disk=True):
         src = Path(item.filepath)
         if not src.exists():
+            continue
+        try:
+            src_hash = item.file_hash or calculate_file_hash(src)
+        except OSError:
+            continue
+        if src_hash in existing_hashes:
             continue
         dest = output / item.filename
         base = dest.stem
@@ -174,6 +214,7 @@ def export_favorites():
             dest = output / f"{base}_{counter}{suffix}"
             counter += 1
         shutil.copy2(src, dest)
+        existing_hashes.add(src_hash)
         copied += 1
     return {"copied": copied, "error": ""}
 

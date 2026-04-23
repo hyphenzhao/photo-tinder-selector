@@ -2,7 +2,7 @@
 {% load static %}
 {% block title %}{{ view_name|title }} · Photo Tinder Selector{% endblock %}
 {% block content %}
-<section class="tinder-shell" data-view="{{ view_name }}">
+<section class="tinder-shell" data-view="{{ view_name }}" data-stack='{{ stack_ids_json|safe }}'>
   {% if view_name == 'favorites' or view_name == 'game' %}
     {% include 'selector/_favorite_panel.html' %}
   {% else %}

@@ -14,6 +14,7 @@ from .forms import AppConfigForm
 from .models import PhotoItem
 from .services import (
     build_stack_queryset,
+    count_ready_videos,
     export_favorites,
     get_config,
     get_scan_state,
@@ -232,7 +233,7 @@ def settings_page(request):
         "selector/export_page.html",
         {
             "form": form,
-            "scan_result": get_scan_state().get("result") or {"found": 0, "added": 0, "missing": 0},
+            "scan_result": config.last_scan_result or get_scan_state().get("result") or {"found": 0, "added": 0, "missing": 0, "videos_ready": count_ready_videos()},
             "scan_state": get_scan_state(),
             "stats": stats(),
             "config": config,

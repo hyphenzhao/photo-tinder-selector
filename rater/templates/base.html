@@ -39,6 +39,11 @@
             <span class="layout-switch-label">Wall</span>
           </span>
         </label>
+        {% if view_name == 'game' %}
+        <button class="ghost-btn quick-filter-btn{% if wall_filters.video_ready == 'yes' %} is-active{% endif %}" type="button" id="quick-video-ready-toggle" {% if layout_mode != 'wall' %}hidden{% endif %} aria-pressed="{% if wall_filters.video_ready == 'yes' %}true{% else %}false{% endif %}">
+          Video Ready
+        </button>
+        {% endif %}
         {% endif %}
       </form>
     </div>

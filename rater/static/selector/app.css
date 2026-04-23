@@ -27,6 +27,16 @@ body {
 .order-form { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
 .order-form select { padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.08); color: white; border: 1px solid rgba(255,255,255,.14); }
 .order-form option { color: black; }
+.quick-filter-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.quick-filter-btn.is-active {
+  background: rgba(95,224,170,.18);
+  border-color: rgba(95,224,170,.45);
+  color: white;
+  box-shadow: 0 10px 24px rgba(95,224,170,.16);
+}
 .layout-switch {
   display: inline-flex;
   align-items: center;
@@ -107,6 +117,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+.wall-filter-toggle.is-disabled {
+  opacity: .45;
+  cursor: not-allowed;
 }
 .wall-filter-toggle-icon {
   display: inline-block;
@@ -257,9 +271,11 @@ body {
 .favorite-lightbox-stage-game {
   overflow: hidden;
   border-radius: 18px;
+  background: #000;
 }
 .game-lightbox-base,
-.game-lightbox-overlay {
+.game-lightbox-overlay,
+.game-lightbox-video {
   grid-area: 1 / 1;
 }
 .game-lightbox-overlay {
@@ -276,9 +292,9 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 18px;
+  border-radius: inherit;
   background: #000;
-  z-index: 1;
+  z-index: 2;
 }
 .favorite-lightbox-stage-game.is-scrubbing {
   cursor: ew-resize;

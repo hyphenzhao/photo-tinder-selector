@@ -315,10 +315,16 @@
       syncVideoButtons();
       resetOverlay();
       lightboxImage.src = currentLayers[targetLayer];
+      if (overlayImage) {
+        overlayImage.hidden = true;
+      }
       videoPlayer.src = currentVideos[layer];
       videoPlayer.hidden = false;
       const finalize = () => {
         stopVideoPlayback();
+        if (overlayImage) {
+          overlayImage.hidden = false;
+        }
         setActivePair(targetPair);
         if (mousouMode) {
           renderMousouDefault();
@@ -645,8 +651,37 @@
   if (pageView === 'favorites' || pageView === 'game') {
     const toggle = document.getElementById('layout-toggle');
     const order = document.getElementById('order-select');
+    const quickVideoReadyToggle = document.getElementById('quick-video-ready-toggle');
     const favoritesUrl = toggle?.getAttribute('hx-get') || order?.getAttribute('hx-get') || (pageView === 'game' ? '/game/' : '/favorites/');
     const storageKey = pageView === 'game' ? 'game-layout' : 'favorites-layout';
+    let quickVideoReadyValue = pageView === 'game' ? (new URLSearchParams(window.location.search).get('video_ready') || '') : '';
+    const isQuickVideoReadyActive = () => pageView === 'game' && quickVideoReadyValue === 'yes';
+    const syncQuickVideoReadyState = () => {
+      if (pageView !== 'game') return;
+      const isWall = Boolean(toggle?.checked);
+      const active = isQuickVideoReadyActive();
+      const filterPanel = document.getElementById('wall-filter-panel');
+      const filterShell = document.getElementById('wall-filter-shell');
+      const filterToggleButton = document.getElementById('wall-filter-toggle');
+
+      if (quickVideoReadyToggle) {
+        quickVideoReadyToggle.hidden = !isWall;
+        quickVideoReadyToggle.classList.toggle('is-active', active);
+        quickVideoReadyToggle.setAttribute('aria-pressed', active ? 'true' : 'false');
+      }
+
+      if (filterToggleButton) {
+        filterToggleButton.disabled = active;
+        filterToggleButton.classList.toggle('is-disabled', active);
+      }
+
+      if (active && filterPanel && filterShell && filterToggleButton) {
+        filterPanel.hidden = true;
+        filterPanel.classList.remove('is-open');
+        filterShell.classList.remove('is-open');
+        filterToggleButton.setAttribute('aria-expanded', 'false');
+      }
+    };
     const buildWallFilterParams = () => {
       const params = new URLSearchParams({ order: order?.value || 'random' });
       if (toggle?.checked) params.set('layout', 'wall');
@@ -654,7 +689,7 @@
       const outfitTo = document.getElementById('filter-outfit-to')?.value;
       const girlFrom = document.getElementById('filter-girl-from')?.value;
       const girlTo = document.getElementById('filter-girl-to')?.value;
-      const videoReady = document.getElementById('filter-video-ready')?.value;
+      const videoReady = document.getElementById('filter-video-ready')?.value || quickVideoReadyValue;
       if (outfitFrom) params.set('outfit_from', outfitFrom);
       if (outfitTo) params.set('outfit_to', outfitTo);
       if (girlFrom) params.set('girl_from', girlFrom);
@@ -677,6 +712,7 @@
     }
     toggle?.addEventListener('change', () => {
       localStorage.setItem(storageKey, toggle.checked ? 'wall' : 'stack');
+      syncQuickVideoReadyState();
       if (toggle.checked) {
         refreshWallPanel(buildWallFilterParams());
       }
@@ -694,10 +730,12 @@
       const applyBtn = document.getElementById('apply-wall-filter');
       const clearBtn = document.getElementById('clear-wall-filter');
       const toggleButton = document.getElementById('wall-filter-toggle');
+      const videoReadyInput = document.getElementById('filter-video-ready');
 
       if (toggleButton && toggleButton.dataset.bound !== 'true') {
         toggleButton.dataset.bound = 'true';
         toggleButton.addEventListener('click', () => {
+          if (toggleButton.disabled) return;
           if (!panel) return;
           panel.hidden = !panel.hidden;
           panel.classList.toggle('is-open', !panel.hidden);
@@ -709,6 +747,7 @@
       if (applyBtn && applyBtn.dataset.bound !== 'true') {
         applyBtn.dataset.bound = 'true';
         applyBtn.addEventListener('click', () => {
+          syncQuickVideoReadyState();
           refreshWallPanel(buildWallFilterParams());
         });
       }
@@ -726,9 +765,29 @@
             shell?.classList.add('is-open');
             toggleButton?.setAttribute('aria-expanded', 'true');
           }
+          syncQuickVideoReadyState();
           refreshWallPanel(buildWallFilterParams());
         });
       }
+
+      if (quickVideoReadyToggle && quickVideoReadyToggle.dataset.bound !== 'true') {
+        quickVideoReadyToggle.dataset.bound = 'true';
+        quickVideoReadyToggle.addEventListener('click', () => {
+          if (!toggle?.checked) return;
+          quickVideoReadyValue = quickVideoReadyValue === 'yes' ? '' : 'yes';
+          syncQuickVideoReadyState();
+          refreshWallPanel(buildWallFilterParams());
+        });
+      }
+
+      if (videoReadyInput && videoReadyInput.dataset.bound !== 'true') {
+        videoReadyInput.dataset.bound = 'true';
+        videoReadyInput.addEventListener('change', () => {
+          quickVideoReadyValue = videoReadyInput.value || '';
+          syncQuickVideoReadyState();
+        });
+      }
+      syncQuickVideoReadyState();
 
       const loader = document.querySelector('.favorites-wall-loader');
       if (loader && !loader.dataset.filterBound) {
@@ -742,6 +801,7 @@
     document.body.addEventListener('htmx:afterSwap', event => {
       const favoritePanel = document.getElementById('favorite-panel-body');
       if (!favoritePanel) return;
+      quickVideoReadyValue = pageView === 'game' ? (new URLSearchParams(window.location.search).get('video_ready') || quickVideoReadyValue) : '';
       initFavoritePanel(favoritePanel);
       bindWallFilters();
     });
